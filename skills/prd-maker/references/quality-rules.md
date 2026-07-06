@@ -5,9 +5,9 @@ Loaded at Step 4 of SKILL.md. Run this checklist ONCE against the PRD draft. Fix
 | # | Check | Fail example → Fix |
 |---|---|---|
 | 1 | Every acceptance criterion is machine-verifiable (a number, an observable behavior, or a pass/fail command) | "빠르게 로딩된다" → "첫 화면이 3초 이내에 표시된다" |
-| 2 | Non-goals are positive statements and cover the likely scope-creep risks of this product | 멀티유저 앱인데 인증 관련 non-goal 없음 → "이번 버전에서 소셜 로그인은 구현하지 않는다" 추가 |
+| 2 | Non-goals are positive statements, at least 3 items, and cover the likely scope-creep risks of this product | 멀티유저 앱인데 인증 관련 non-goal 없음 → "이번 버전에서 소셜 로그인은 구현하지 않는다" 추가 |
 | 3 | Phase 1 alone produces something runnable and manually verifiable | Phase 1이 "DB 설계만" → 눈에 보이는 동작 하나를 Phase 1로 이동 |
-| 4 | No adjective-only requirements remain | "직관적인 UI" → "모든 핵심 기능이 2클릭 이내로 도달 가능" |
+| 4 | No adjective/adverb-only requirements remain | "직관적인 UI" → "모든 핵심 기능이 2클릭 이내로 도달 가능" |
 | 5 | Nothing was invented: every item the user did not confirm carries `(가정)`, and derived tech defaults carry a rationale | 조용히 선택된 스택 → 근거 병기 + `(가정)` 표시 |
 
 ## Delivery message requirements
