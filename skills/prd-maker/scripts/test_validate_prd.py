@@ -116,7 +116,43 @@ class TestCheck1Header(unittest.TestCase):
         )
 
 
+class TestFencedCodeBlocks(unittest.TestCase):
+    def test_fenced_heading_and_assumption_are_ignored(self):
+        # A fenced markdown example containing `## 3.` must not trip CHECK 2,
+        # and a `(가정)` line inside the fence must not be listed.
+        fenced = (
+            "예시:\n"
+            "```markdown\n"
+            "## 3. 펜스 안 가짜 섹션\n"
+            "- 펜스 안 항목 (가정)\n"
+            "```\n"
+        )
+        text = make_valid_prd().replace(
+            "## 5. 기술 제약 & 기존 결정\n",
+            "## 5. 기술 제약 & 기존 결정\n" + fenced,
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check2_line = [l for l in out.splitlines() if "CHECK 2" in l][0]
+        self.assertIn("PASS", check2_line)
+        self.assertIn("ASSUMPTIONS (2):", out)
+
+
 class TestCheck2Sections(unittest.TestCase):
+    def test_out_of_order_only_fails(self):
+        # All 7 sections present exactly once, but sections 2 and 3 swapped.
+        text = make_valid_prd()
+        lines = text.splitlines(keepends=True)
+        s2 = next(i for i, l in enumerate(lines) if l.startswith("## 2."))
+        s3 = next(i for i, l in enumerate(lines) if l.startswith("## 3."))
+        s4 = next(i for i, l in enumerate(lines) if l.startswith("## 4."))
+        swapped = lines[:s2] + lines[s3:s4] + lines[s2:s3] + lines[s4:]
+        code, out = run_validator("".join(swapped))
+        self.assertEqual(code, 1)
+        check2_line = [l for l in out.splitlines() if "CHECK 2" in l][0]
+        self.assertIn("FAIL", check2_line)
+        self.assertIn("order", check2_line)
+
     def test_missing_section_fails(self):
         text = make_valid_prd()
         # Remove section 4 entirely (heading through the line before section 5).
@@ -156,6 +192,19 @@ class TestCheck3NonGoals(unittest.TestCase):
 
 
 class TestCheck4PhasesCheckboxes(unittest.TestCase):
+    def test_section_6_without_any_phase_heading_fails(self):
+        text = make_valid_prd()
+        lines = text.splitlines(keepends=True)
+        s6 = next(i for i, l in enumerate(lines) if l.startswith("## 6."))
+        s7 = next(i for i, l in enumerate(lines) if l.startswith("## 7."))
+        # Replace section 6's body with phase-less content.
+        new_body = "요구사항이 phase 없이 나열됨.\n- [ ] 기준 1\n\n"
+        new_text = "".join(lines[: s6 + 1]) + new_body + "".join(lines[s7:])
+        code, out = run_validator(new_text)
+        self.assertEqual(code, 1)
+        check4_line = [l for l in out.splitlines() if "CHECK 4" in l][0]
+        self.assertIn("FAIL", check4_line)
+
     def test_phase_without_checkbox_fails(self):
         text = make_valid_prd().replace(
             "**수용 기준:**\n- [x] 기준 1\n", "**수용 기준:**\n(없음)\n"
@@ -212,6 +261,38 @@ class TestCliUsage(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 2)
+
+    def test_error_messages_go_to_stderr(self):
+        no_arg = subprocess.run(
+            [sys.executable, str(SCRIPT)], capture_output=True, text=True
+        )
+        self.assertEqual(no_arg.stdout, "")
+        self.assertIn("Usage", no_arg.stderr)
+        missing = subprocess.run(
+            [sys.executable, str(SCRIPT), "/no/such/file/PRD.md"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(missing.stdout, "")
+        self.assertNotEqual(missing.stderr, "")
+
+    def test_non_utf8_file_exits_2(self):
+        with tempfile.NamedTemporaryFile(
+            mode="wb", suffix=".md", delete=False
+        ) as f:
+            f.write("# 제목\n> 헤더\n".encode("euc-kr"))
+            path = f.name
+        try:
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), path],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(result.stdout, "")
+            self.assertIn("UTF-8", result.stderr)
+        finally:
+            pathlib.Path(path).unlink()
 
 
 if __name__ == "__main__":

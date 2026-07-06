@@ -3,6 +3,9 @@
 
 Checks are language-agnostic: they match markdown structure and numbers only,
 never heading words, because the generated PRD is written in the user's language.
+Fenced code blocks (``` ... ```) are stripped before all checks — including the
+ASSUMPTIONS listing — so markdown examples inside the PRD cannot cause false
+failures.
 
 Usage:
     python3 validate_prd.py <path-to-PRD.md>
@@ -10,7 +13,7 @@ Usage:
 Exit codes:
     0 - all 5 structural checks pass
     1 - at least one check failed
-    2 - usage error (missing argument or file not found)
+    2 - usage error (missing argument, file not found, or not valid UTF-8)
 """
 
 import re
@@ -28,6 +31,22 @@ ASSUMPTION_RE = re.compile(r"\(가정\)|\(assumption\)", re.IGNORECASE)
 REQUIRED_SECTIONS = list(range(1, 8))
 MIN_NON_GOALS = 3
 MAX_REQUIREMENTS_PER_PHASE = 50
+
+
+def strip_fenced_blocks(lines):
+    """Blank out lines inside fenced code blocks (and the ``` fence lines
+    themselves), keeping list indices stable so reported line numbers stay
+    correct.
+    """
+    stripped = []
+    in_fence = False
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            stripped.append("")
+        else:
+            stripped.append("" if in_fence else line)
+    return stripped
 
 
 def find_section_body(lines, section_num):
@@ -129,6 +148,9 @@ def check3_non_goals(lines):
 
 
 def check4_phase_checkboxes(lines):
+    """Every `### ` heading inside section 6 is treated as a phase by design:
+    the PRD template allows only phase headings at that level within section 6.
+    """
     body = find_section_body(lines, 6)
     if body is None:
         return False, "section `## 6.` not found."
@@ -183,7 +205,7 @@ def find_assumptions(lines):
 
 
 def run_checks(text):
-    lines = text.splitlines()
+    lines = strip_fenced_blocks(text.splitlines())
 
     checks = [
         ("CHECK 1 (agent header)", check1_agent_header(lines)),
@@ -211,15 +233,20 @@ def run_checks(text):
 
 def main(argv):
     if len(argv) != 2:
-        print("Usage: python3 validate_prd.py <path-to-PRD.md>")
+        print("Usage: python3 validate_prd.py <path-to-PRD.md>", file=sys.stderr)
         return 2
 
     path = Path(argv[1])
     if not path.is_file():
-        print(f"Error: file not found: {path}")
+        print(f"Error: file not found: {path}", file=sys.stderr)
         return 2
 
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        print(f"Error: {path} is not valid UTF-8 text.", file=sys.stderr)
+        return 2
+
     all_pass, report = run_checks(text)
     print(report)
     return 0 if all_pass else 1
