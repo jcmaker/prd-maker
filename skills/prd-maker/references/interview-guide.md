@@ -10,14 +10,14 @@ Infer from the user's first description:
 - **Non-developer track** — describes outcomes in product words only ("앱 같은 거", "a site where people can sign up").
 - **Ambiguous** — ask exactly one light question: "평소에 직접 코드를 작성하시나요?" / "Do you usually write code yourself?"
 
-The track changes WHAT YOU ASK, never what the PRD must contain:
+The track changes WHAT YOU ASK, never what the PRD must contain. Each table topic feeds a checklist element in B (noted in parentheses) — an answer here fills that element, so never re-ask it:
 
-| Topic | Developer track | Non-developer track |
+| Topic (fills element) | Developer track | Non-developer track |
 |---|---|---|
-| Stack | Ask preference directly | Do NOT ask. Derive a sensible default from product answers; record it in the PRD with rationale |
-| Platform | "웹/모바일/CLI 중 어디에?" | "주로 폰에서 쓰나요, 컴퓨터에서 쓰나요?" |
-| Users/auth | "인증이 필요한가요? 방식은?" | "혼자 쓰나요, 여러 명이 같이 쓰나요?" |
-| Data | "저장소나 스키마 생각이 있으세요?" | "어떤 정보를 기록하거나 보여줘야 하나요?" |
+| Stack (→ B6) | Ask preference directly | Do NOT ask. Derive a sensible default from product answers; record it in the PRD with rationale |
+| Platform (→ B6) | "웹/모바일/CLI 중 어디에?" | "주로 폰에서 쓰나요, 컴퓨터에서 쓰나요?" |
+| Users/auth (→ B2, B6) | "인증이 필요한가요? 방식은?" | "혼자 쓰나요, 여러 명이 같이 쓰나요?" |
+| Data (→ B8) | "저장소나 스키마 생각이 있으세요?" | "어떤 정보를 기록하거나 보여줘야 하나요?" |
 
 ## B. Coverage checklist — the 8 required elements
 
@@ -35,7 +35,7 @@ First, extract everything the user's initial description already answers. Then a
 ## C. Question strategy
 
 - One question per message. Multiple choice when the options are enumerable.
-- "모르겠어요" → give ONE recommendation with a one-line reason, ask yes/no. Never present a second open-ended question about the same element.
+- "모르겠어요" → give ONE recommendation with a one-line reason, ask yes/no. Never present a second open-ended question about the same element. If the user rejects the recommendation, ask what they'd prefer instead (counts toward the cap); if they still can't decide, record your recommendation marked `(가정)` and move on.
 - Hard cap: 10 questions total (including the level-check question). When near the cap, stop asking; fill the remaining elements (usually 5 and 8) with sensible defaults marked `(가정)`.
 - Watch for the "idea too big" signal (3+ independent subsystems) from the very first description — trigger the narrowing edge case in SKILL.md immediately, BEFORE spending questions on details.
 
