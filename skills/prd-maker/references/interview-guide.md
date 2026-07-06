@@ -18,6 +18,7 @@ The track changes WHAT YOU ASK, never what the PRD must contain. Each table topi
 | Platform (→ B6) | "웹/모바일/CLI 중 어디에?" | "주로 폰에서 쓰나요, 컴퓨터에서 쓰나요?" |
 | Users/auth (→ B2, B6) | "인증이 필요한가요? 방식은?" | "혼자 쓰나요, 여러 명이 같이 쓰나요?" |
 | Data (→ B8) | "저장소나 스키마 생각이 있으세요?" | "어떤 정보를 기록하거나 보여줘야 하나요?" |
+| Existing code & deployment (→ B6) | "기존 코드베이스가 있나요? 배포는 어디에 할 생각이세요?" | Do NOT ask. Assume greenfield; record a hosting default with rationale |
 
 ## B. Coverage checklist — the 8 required elements
 
