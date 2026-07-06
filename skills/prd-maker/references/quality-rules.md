@@ -2,6 +2,8 @@
 
 Loaded at Step 4 of SKILL.md. Run this checklist ONCE against the PRD draft. Fix every violation you find, then deliver. No recursive re-review.
 
+Structural checks (section presence/order, non-goals ≥ 3, phase checkboxes, ≤ 50 requirements per phase) are automated by `scripts/validate_prd.py`, which SKILL.md Step 4 runs first — this checklist covers the semantic judgments a script cannot make.
+
 | # | Check | Fail example → Fix |
 |---|---|---|
 | 1 | Every acceptance criterion is machine-verifiable (a number, an observable behavior, or a pass/fail command) | "빠르게 로딩된다" → "첫 화면이 3초 이내에 표시된다" |

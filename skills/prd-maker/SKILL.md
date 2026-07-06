@@ -34,7 +34,7 @@ Summarize everything collected in 3–5 lines. Ask the user to confirm or correc
 Read `references/prd-template.md` and draft the full PRD following its structure and per-section rules.
 
 ### Step 4 — Self-review and deliver
-Read `references/quality-rules.md`. Check the draft against every rule ONCE, fix violations, then save the result as `PRD.md` in the current working directory. In your delivery message, list every `(가정)` item explicitly and ask the user to review them.
+Save the draft as `PRD.md` in the current working directory. Run the structural linter: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/prd-maker/scripts/validate_prd.py PRD.md` — fix any FAIL and re-run until it exits 0. Then read `references/quality-rules.md` and check the draft against every semantic rule ONCE, fixing violations. In your delivery message, list every `(가정)` item explicitly (the linter's ASSUMPTIONS output helps) and ask the user to review them.
 
 ## Edge cases
 

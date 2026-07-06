@@ -33,20 +33,24 @@ prd-maker/                          # 플러그인 루트 (이 저장소)
 └── skills/
     └── prd-maker/
         ├── SKILL.md                # 오케스트레이터 (150줄 이하)
-        └── references/
-            ├── interview-guide.md  # 어떻게 물을 것인가
-            ├── prd-template.md     # 무엇을 산출할 것인가
-            └── quality-rules.md    # 무엇이 좋은 PRD인가
+        ├── references/
+        │   ├── interview-guide.md  # 어떻게 물을 것인가
+        │   ├── prd-template.md     # 무엇을 산출할 것인가
+        │   └── quality-rules.md    # 무엇이 좋은 PRD인가 (의미적 판단만)
+        └── scripts/
+            ├── validate_prd.py     # 구조 린터 (섹션·non-goals·체크박스·상한, stdlib만)
+            └── test_validate_prd.py # 린터 유닛 테스트
 ```
 
 ### 컴포넌트 책임과 로드 시점
 
 | 유닛 | 단일 책임 | 로드 시점 |
 |---|---|---|
-| `SKILL.md` | 4단계 워크플로우 지휘: ①아이디어 듣기 → ②적응형 인터뷰 → ③PRD 생성 → ④셀프 리뷰 후 전달. 엣지 케이스 규칙 포함 | 항상 |
+| `SKILL.md` | 4단계 워크플로우 지휘: ①아이디어 듣기 → ②적응형 인터뷰 → ③PRD 생성 → ④구조 린터 실행 후 셀프 리뷰·전달. 엣지 케이스 규칙 포함 | 항상 |
 | `interview-guide.md` | 기술 수준 감지법, 커버리지 체크리스트(8요소), 질문 전략, 비개발자용 질문 번역 | 인터뷰 시작 시 |
 | `prd-template.md` | PRD 7섹션 구조 + 섹션별 작성 규칙 + 에이전트 지시 헤더 | PRD 작성 시 |
-| `quality-rules.md` | 산출 직전 셀프 리뷰 체크리스트 | 셀프 리뷰 시 |
+| `quality-rules.md` | 산출 직전 셀프 리뷰 체크리스트 (구조 체크는 린터가 대체, 의미적 판단만 남음) | 셀프 리뷰 시 |
+| `scripts/validate_prd.py` | 결정론적 구조 체크 5종(섹션 존재/순서, non-goals ≥3, phase 체크박스, 요구사항 ≤50) + `(가정)` 목록 출력 | Step 4에서 `PRD.md` 저장 직후, quality-rules.md 리뷰 전에 실행 |
 
 설계 원칙은 **점진적 공개(progressive disclosure)**: 각 단계에서 필요한 지침만 컨텍스트에 로드해 단계별 지시 개수를 낮게 유지한다. (근거: 프론티어 LLM도 동시 지시 150~200개 수준에서 수행 품질 저하 — §9 리서치 근거 참고)
 
@@ -107,6 +111,8 @@ prd-maker/                          # 플러그인 루트 (이 저장소)
 - 페이즈 1만 구현해도 동작하는 결과물이 나오는가?
 - 형용사·부사로만 된 요구사항("직관적인 UI")이 남아있는가?
 - 사용자가 말하지 않은 내용을 지어내지 않았는가? 모든 가정에 `(가정)` 표시가 있는가?
+
+이 중 구조적으로 판별 가능한 부분(섹션 존재/순서, non-goals 개수 ≥ 3, phase별 체크박스 존재, phase당 요구사항 ≤ 50)은 `scripts/validate_prd.py`가 자동 검사한다 — LLM 셀프 리뷰보다 저렴하고 신뢰도가 높기 때문이다. SKILL.md Step 4는 이 린터를 먼저 실행해 FAIL을 전부 고친 뒤, 남은 의미적 판단(수용기준의 기계 검증 가능성, non-goals의 스코프 커버리지 적절성, Phase 1의 실행 가능성, 형용사/부사 잔존 여부, 가정의 타당성)만 `quality-rules.md`로 점검한다.
 
 ## 7. 엣지 케이스 처리 (SKILL.md에 명시)
 
