@@ -18,3 +18,4 @@ After saving `PRD.md`, the message to the user MUST:
 1. List every `(가정)` item as a bullet list and ask the user to confirm or correct them.
 2. Remind the user the PRD is a living document: "구현 중 결정이 바뀌면 이 문서를 갱신하세요."
 3. Suggest the natural next step: hand `PRD.md` to an AI coding agent (e.g. a fresh Claude Code session) with "이 PRD대로 구현해줘".
+4. If the user then confirms or corrects any `(가정)` item, update `PRD.md` accordingly and remove the confirmed marks — otherwise the implementing agent will re-verify them with the user before starting.
