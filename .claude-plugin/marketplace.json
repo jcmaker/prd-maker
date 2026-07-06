@@ -1,0 +1,15 @@
+{
+  "name": "prd-maker",
+  "description": "Marketplace for the prd-maker plugin: adaptive-interview PRD generator for AI coding agents",
+  "owner": {
+    "name": "jcmaker",
+    "email": "jcmaker0627@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "prd-maker",
+      "source": "./",
+      "description": "Interview-driven PRD generator: turns anyone's product idea into an agent-executable PRD.md through an adaptive interview"
+    }
+  ]
+}
