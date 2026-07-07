@@ -18,6 +18,16 @@ Exit codes:
 
 import re
 import sys
+import re
+import sys
+from pathlib import Path
+
+# Windows consoles often default to cp1252, which can't encode Korean text.
+# Force UTF-8 for stdout/stderr so the linter works cross-platform.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 from pathlib import Path
 
 HEADING_RE = re.compile(r"^## ")
@@ -31,6 +41,8 @@ ASSUMPTION_RE = re.compile(r"\(가정\)|\(assumption\)", re.IGNORECASE)
 REQUIRED_SECTIONS = list(range(1, 8))
 MIN_NON_GOALS = 3
 MAX_REQUIREMENTS_PER_PHASE = 50
+ADVISORY_REQUIREMENTS_THRESHOLD = 30
+
 
 
 def strip_fenced_blocks(lines):
@@ -176,24 +188,31 @@ def check4_phase_checkboxes(lines):
 def check5_requirements_cap(lines):
     body = find_section_body(lines, 6)
     if body is None:
-        return False, "section `## 6.` not found."
+        return False, "section `## 6.` not found.", []
     phases = find_phase_blocks(body)
     if not phases:
-        return False, "no phases (`### ` headings) found in `## 6.`."
+        return False, "no phases (`### ` headings) found in `## 6.`.", []
 
     over_cap = []
+    advisories = []
     for title, block in phases:
         count = sum(1 for _, text in block if NUMBERED_ITEM_RE.match(text))
         if count > MAX_REQUIREMENTS_PER_PHASE:
             over_cap.append((title, count))
+        elif count > ADVISORY_REQUIREMENTS_THRESHOLD:
+            advisories.append((title, count))
 
     if not over_cap:
-        return True, f"all {len(phases)} phase(s) have <= {MAX_REQUIREMENTS_PER_PHASE} requirements."
+        return (
+            True,
+            f"all {len(phases)} phase(s) have <= {MAX_REQUIREMENTS_PER_PHASE} requirements.",
+            advisories,
+        )
     detail = ", ".join(
         f"'{title}' has {count} requirements (max {MAX_REQUIREMENTS_PER_PHASE})"
         for title, count in over_cap
     )
-    return False, detail
+    return False, detail, advisories
 
 
 def find_assumptions(lines):
@@ -207,12 +226,14 @@ def find_assumptions(lines):
 def run_checks(text):
     lines = strip_fenced_blocks(text.splitlines())
 
+    check5_passed, check5_detail, check5_advisories = check5_requirements_cap(lines)
+
     checks = [
         ("CHECK 1 (agent header)", check1_agent_header(lines)),
         ("CHECK 2 (seven numbered sections)", check2_seven_sections(lines)),
         ("CHECK 3 (non-goals count)", check3_non_goals(lines)),
         ("CHECK 4 (phases + acceptance checkboxes)", check4_phase_checkboxes(lines)),
-        ("CHECK 5 (requirements cap)", check5_requirements_cap(lines)),
+        ("CHECK 5 (requirements cap)", (check5_passed, check5_detail)),
     ]
 
     report_lines = []
@@ -222,6 +243,12 @@ def run_checks(text):
         if not passed:
             all_pass = False
         report_lines.append(f"{status} - {name}: {detail}")
+
+    for title, count in check5_advisories:
+        report_lines.append(
+            f'ADVISORY - Phase "{title}" has {count} requirements '
+            f"(recommended <= {ADVISORY_REQUIREMENTS_THRESHOLD})"
+        )
 
     assumptions = find_assumptions(lines)
     report_lines.append(f"ASSUMPTIONS ({len(assumptions)}):")
