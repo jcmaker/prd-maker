@@ -18,8 +18,6 @@ Exit codes:
 
 import re
 import sys
-import re
-import sys
 from pathlib import Path
 
 # Windows consoles often default to cp1252, which can't encode Korean text.
@@ -28,7 +26,6 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
-from pathlib import Path
 
 HEADING_RE = re.compile(r"^## ")
 NUMBERED_SECTION_RE = re.compile(r"^## ([1-7])\.")

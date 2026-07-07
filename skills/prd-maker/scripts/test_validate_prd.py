@@ -256,6 +256,8 @@ class TestCheck5RequirementsCap(unittest.TestCase):
         self.assertEqual(len(advisory_lines), 1)
         self.assertIn("Phase 1", advisory_lines[0])
         self.assertIn("35", advisory_lines[0])
+
+
 class TestAssumptions(unittest.TestCase):
     def test_korean_and_english_assumption_markers_are_both_counted(self):
         text = make_valid_prd().replace(
