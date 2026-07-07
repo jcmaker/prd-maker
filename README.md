@@ -242,7 +242,12 @@ The skill content (`SKILL.md` + `references/` + `scripts/`) follows the tool-agn
 
 **Codex** — this repo is packaged as a Codex plugin (`.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json`). Codex discovers the skill under `skills/` when you open the repo; invoke it with `$prd-maker` or `/skills`, or just describe your idea and it activates. The output and linter are identical to Claude Code.
 
-**Cursor and others** — tools with native Agent Skills support (Gemini CLI, Copilot, …) pick it up when placed in their skills directory. For tools without it, just point the agent at it: **"read `skills/prd-maker/SKILL.md` and follow it to interview me, then produce `PRD.md`."** Only the auto-trigger is missing — the interview, PRD writing, and structure linter (`scripts/validate_prd.py`, stdlib only) all work.
+**Cursor and others** — tools with native Agent Skills support (Gemini CLI, Copilot, …) pick it up when placed in their skills directory. For tools without it, use the skill directly:
+
+1. Clone this repo or download it so `skills/prd-maker/SKILL.md`, `skills/prd-maker/references/`, and `skills/prd-maker/scripts/` are all available locally.
+2. Open your target project in Cursor.
+3. Give Cursor this prompt: **"Read `<path-to-this-repo>/skills/prd-maker/SKILL.md` and follow it to interview me, then produce `PRD.md` in this project."**
+4. Answer the interview questions. Cursor should write the same pure-markdown PRD and run the same structure linter (`scripts/validate_prd.py`, stdlib only); only the auto-trigger is missing.
 
 > The `PRD.md` it produces is pure markdown from the start, so it drops into **any agent, 100% as-is**. Cross-agent support applies to the *producing* side too — the *consuming* side was universal from day one.
 
