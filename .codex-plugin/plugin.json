@@ -1,0 +1,15 @@
+{
+  "name": "prd-maker",
+  "version": "0.1.0",
+  "description": "Interview-driven PRD generator: turns anyone's product idea into an agent-executable PRD.md through an adaptive interview",
+  "author": {
+    "name": "jcmaker",
+    "email": "jcmaker0627@gmail.com"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "PRD Maker",
+    "shortDescription": "Interview an idea into an agent-executable PRD.md",
+    "category": "Productivity"
+  }
+}

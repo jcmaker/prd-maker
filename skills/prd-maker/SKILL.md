@@ -34,7 +34,7 @@ Summarize everything collected in 3–5 lines. Ask the user to confirm or correc
 Read `references/prd-template.md` and draft the full PRD following its structure and per-section rules.
 
 ### Step 4 — Self-review and deliver
-Save the draft as `PRD.md` in the current working directory. Run the structural linter: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/prd-maker/scripts/validate_prd.py PRD.md` — fix any FAIL and re-run (if it still fails after 3 attempts, show the report to the user and ask how to proceed). Then read `references/quality-rules.md` and check the draft against every semantic rule ONCE, fixing violations. In your delivery message, list every `(가정)` item explicitly (the linter's ASSUMPTIONS output helps) and ask the user to review them.
+Save the draft as `PRD.md` in the current working directory. Run the structural linter — the `scripts/validate_prd.py` file in this skill's own directory — on it: `python3 <this-skill-dir>/scripts/validate_prd.py PRD.md` (in Claude Code the skill directory is `${CLAUDE_PLUGIN_ROOT}/skills/prd-maker`; other agents expose it as the folder this SKILL.md was loaded from). Fix any FAIL and re-run (if it still fails after 3 attempts, show the report to the user and ask how to proceed). Then read `references/quality-rules.md` and check the draft against every semantic rule ONCE, fixing violations. In your delivery message, list every `(가정)` item explicitly (the linter's ASSUMPTIONS output helps) and ask the user to review them.
 
 ## Edge cases
 
