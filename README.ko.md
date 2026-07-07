@@ -244,7 +244,12 @@ claude plugin install prd-maker@prd-maker
 
 **Codex** — 이 저장소는 Codex 플러그인으로도 패키징되어 있습니다 (`.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json`). Codex는 저장소를 열면 `skills/` 아래의 스킬을 발견하며, `$prd-maker` 또는 `/skills`로 호출하거나 아이디어를 설명하면 자동으로 켜집니다. 산출물과 린터는 Claude Code에서와 동일합니다.
 
-**Cursor · 그 외** — Agent Skills를 네이티브로 지원하는 도구(Gemini CLI, Copilot 등)는 스킬 디렉토리에 배치하면 되고, 그렇지 않은 도구에서는 에이전트에게 **"`skills/prd-maker/SKILL.md`를 읽고 그대로 따라 인터뷰한 뒤 `PRD.md`를 만들어줘"** 라고 지목하면 됩니다. 자동 트리거만 없을 뿐, 인터뷰·PRD 작성·구조 린터(`scripts/validate_prd.py`, 표준 라이브러리만 사용)까지 전부 동작합니다.
+**Cursor · 그 외** — Agent Skills를 네이티브로 지원하는 도구(Gemini CLI, Copilot 등)는 스킬 디렉토리에 배치하면 되고, 그렇지 않은 도구에서는 스킬을 직접 지목해 쓰면 됩니다:
+
+1. 이 저장소를 클론하거나 내려받아 `skills/prd-maker/SKILL.md`, `skills/prd-maker/references/`, `skills/prd-maker/scripts/`가 모두 로컬에 있게 합니다.
+2. Cursor에서 PRD를 만들 대상 프로젝트를 엽니다.
+3. Cursor에게 이렇게 요청합니다: **"`<이-저장소-경로>/skills/prd-maker/SKILL.md`를 읽고 그대로 따라 인터뷰한 뒤, 이 프로젝트에 `PRD.md`를 만들어줘."**
+4. 인터뷰 질문에 답하면 됩니다. Cursor는 같은 순수 마크다운 PRD를 쓰고 같은 구조 린터(`scripts/validate_prd.py`, 표준 라이브러리만 사용)를 실행해야 합니다. 자동 트리거만 없을 뿐입니다.
 
 > 산출되는 `PRD.md`는 애초에 순수 마크다운이라 **어느 에이전트에 넣든 100% 그대로** 쓸 수 있습니다. 크로스-에이전트는 "PRD를 만드는 쪽"에도 적용될 뿐, "PRD를 소비하는 쪽"은 처음부터 범용이었습니다.
 
