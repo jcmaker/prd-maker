@@ -16,6 +16,10 @@
 
 **Say your idea out loud, get a `PRD.md` any AI coding agent can execute — a plugin for Claude Code · Codex.**
 
+<br/>
+
+<img src="assets/demo.gif" alt="prd-maker interview demo — from an idea to a linted PRD.md in one flow" width="720">
+
 </div>
 
 The most important document when you build something is the one at the very start: the PRD (product requirements document). But in the age of AI coding agents, a good PRD looks different from the ones humans used to align with each other. prd-maker bakes the "how to write a PRD an agent can actually execute" know-how into an interview and a template, so that **even non-developers get a good PRD just by answering questions.**
