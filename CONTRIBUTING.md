@@ -15,9 +15,7 @@ This is a prompt-asset plugin: markdown instructions plus a small standard-libra
 Run the same checks CI runs, from the repo root:
 
 ```bash
-python3 skills/prd-maker/scripts/test_validate_prd.py   # linter unit tests
-python3 .github/scripts/check_skill_structure.py        # SKILL.md constraints + reference integrity
-python3 .github/scripts/check_manifests.py              # plugin / marketplace manifests
+./scripts/check-all.sh
 ```
 
 All three must pass. CI runs them on every pull request.
