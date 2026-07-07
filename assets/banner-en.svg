@@ -1,0 +1,76 @@
+<svg width="1280" height="360" viewBox="0 0 1280 360" fill="none" xmlns="http://www.w3.org/2000/svg" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f1226"/>
+      <stop offset="0.55" stop-color="#1b1f3b"/>
+      <stop offset="1" stop-color="#2a2150"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b7cf6"/>
+      <stop offset="1" stop-color="#5ed6c4"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="360" rx="20" fill="url(#bg)"/>
+
+  <!-- subtle grid dots -->
+  <g fill="#ffffff" opacity="0.05">
+    <circle cx="1120" cy="60" r="3"/><circle cx="1170" cy="60" r="3"/><circle cx="1220" cy="60" r="3"/>
+    <circle cx="1120" cy="110" r="3"/><circle cx="1170" cy="110" r="3"/><circle cx="1220" cy="110" r="3"/>
+    <circle cx="1120" cy="160" r="3"/><circle cx="1170" cy="160" r="3"/><circle cx="1220" cy="160" r="3"/>
+  </g>
+
+  <!-- title block -->
+  <text x="80" y="132" font-size="72" font-weight="800" fill="#ffffff" letter-spacing="-1">prd-maker</text>
+  <rect x="82" y="150" width="120" height="6" rx="3" fill="url(#accent)"/>
+  <text x="80" y="194" font-size="24" font-weight="600" fill="#c9c6f0">Say your idea — get a PRD any AI coding agent can execute</text>
+  <text x="80" y="228" font-size="18" fill="#8f8cbf">Works for non-devs · Adaptive interview · Any coding agent</text>
+
+  <!-- flow pipeline -->
+  <g filter="url(#soft)">
+    <!-- Idea -->
+    <rect x="80" y="272" width="150" height="52" rx="26" fill="#252a52" stroke="#3d4488" stroke-width="1.5"/>
+    <text x="155" y="305" font-size="20" font-weight="600" fill="#e8e6ff" text-anchor="middle">💡 Idea</text>
+
+    <!-- Interview -->
+    <rect x="286" y="272" width="150" height="52" rx="26" fill="#252a52" stroke="#3d4488" stroke-width="1.5"/>
+    <text x="361" y="305" font-size="19" font-weight="600" fill="#e8e6ff" text-anchor="middle">💬 Interview</text>
+
+    <!-- PRD.md -->
+    <rect x="492" y="272" width="150" height="52" rx="26" fill="url(#accent)"/>
+    <text x="567" y="305" font-size="20" font-weight="800" fill="#12142b" text-anchor="middle">📄 PRD.md</text>
+
+    <!-- Build -->
+    <rect x="698" y="272" width="150" height="52" rx="26" fill="#252a52" stroke="#3d4488" stroke-width="1.5"/>
+    <text x="773" y="305" font-size="20" font-weight="600" fill="#e8e6ff" text-anchor="middle">🤖 Build</text>
+  </g>
+
+  <!-- arrows -->
+  <g stroke="#6b6fae" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M236 298 L280 298"/><path d="M272 292 L280 298 L272 304"/>
+    <path d="M442 298 L486 298"/><path d="M478 292 L486 298 L478 304"/>
+    <path d="M648 298 L692 298"/><path d="M684 292 L692 298 L684 304"/>
+  </g>
+
+  <!-- right side document motif -->
+  <g transform="translate(940 84)">
+    <rect x="6" y="8" width="230" height="200" rx="14" fill="#000000" opacity="0.28"/>
+    <rect x="0" y="0" width="230" height="200" rx="14" fill="#f4f3ff"/>
+    <rect x="20" y="22" width="120" height="14" rx="7" fill="#8b7cf6"/>
+    <rect x="20" y="52" width="190" height="9" rx="4.5" fill="#c9c6ea"/>
+    <rect x="20" y="70" width="190" height="9" rx="4.5" fill="#c9c6ea"/>
+    <rect x="20" y="88" width="150" height="9" rx="4.5" fill="#c9c6ea"/>
+    <!-- checkbox rows -->
+    <rect x="20" y="118" width="14" height="14" rx="4" fill="none" stroke="#5ed6c4" stroke-width="2.5"/>
+    <path d="M23 125 l3.5 3.5 L33 121" stroke="#5ed6c4" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="44" y="120" width="150" height="9" rx="4.5" fill="#c9c6ea"/>
+    <rect x="20" y="146" width="14" height="14" rx="4" fill="none" stroke="#5ed6c4" stroke-width="2.5"/>
+    <path d="M23 153 l3.5 3.5 L33 149" stroke="#5ed6c4" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="44" y="148" width="130" height="9" rx="4.5" fill="#c9c6ea"/>
+    <rect x="20" y="174" width="14" height="14" rx="4" fill="none" stroke="#5ed6c4" stroke-width="2.5"/>
+    <rect x="44" y="176" width="160" height="9" rx="4.5" fill="#c9c6ea"/>
+  </g>
+</svg>
