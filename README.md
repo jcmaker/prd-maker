@@ -1,6 +1,19 @@
-# prd-maker
+<div align="center">
+
+<img src="assets/banner.svg" alt="prd-maker — 아이디어를 말하면, AI 에이전트가 실행할 수 있는 PRD를 만들어줍니다" width="100%">
+
+<br/>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-5ed6c4.svg?style=flat-square)](LICENSE)
+![Version](https://img.shields.io/badge/version-0.1.0-8b7cf6.svg?style=flat-square)
+![Built for Claude Code](https://img.shields.io/badge/built%20for-Claude%20Code-d97757.svg?style=flat-square)
+![Output](https://img.shields.io/badge/output-pure%20markdown-24292f.svg?style=flat-square)
+![No dependencies](https://img.shields.io/badge/deps-stdlib%20only-3d4488.svg?style=flat-square)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/jcmaker/prd-maker/pulls)
 
 **아이디어를 말하면, AI 코딩 에이전트가 그대로 실행할 수 있는 `PRD.md`를 만들어주는 Claude Code 플러그인.**
+
+</div>
 
 무언가를 만들려고 할 때 가장 중요한 건 시작점의 문서, 즉 PRD(제품 요구사항 문서)입니다. 그런데 AI 에이전트에게 일을 시키는 시대의 PRD는 사람끼리 합의하던 예전 PRD와 다릅니다. prd-maker는 그 "에이전트용 PRD 잘 쓰는 법"을 인터뷰와 템플릿 안에 녹여, **비개발자도 질문에 답하기만 하면** 좋은 PRD가 나오게 합니다.
 
