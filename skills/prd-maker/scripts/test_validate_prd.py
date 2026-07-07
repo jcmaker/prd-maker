@@ -27,6 +27,7 @@ def run_validator(text):
             [sys.executable, str(SCRIPT), path],
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         return result.returncode, result.stdout + result.stderr
     finally:
@@ -215,7 +216,6 @@ class TestCheck4PhasesCheckboxes(unittest.TestCase):
         self.assertIn("FAIL", check4_line)
         self.assertIn("Phase 2", check4_line)
 
-
 class TestCheck5RequirementsCap(unittest.TestCase):
     def test_51_requirements_in_phase_fails(self):
         many_reqs = "\n".join(f"{i}. 요구사항 {i}" for i in range(1, 52))
@@ -229,6 +229,33 @@ class TestCheck5RequirementsCap(unittest.TestCase):
         self.assertIn("FAIL", check5_line)
         self.assertIn("Phase 1", check5_line)
         self.assertIn("51", check5_line)
+
+    def test_30_requirements_no_advisory_passes(self):
+        many_reqs = "\n".join(f"{i}. 요구사항 {i}" for i in range(1, 31))
+        text = make_valid_prd().replace(
+            "**요구사항:**\n1. 요구사항 1\n2. 요구사항 2\n**수용 기준:**\n- [ ] 기준 1",
+            f"**요구사항:**\n{many_reqs}\n**수용 기준:**\n- [ ] 기준 1",
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check5_line = [l for l in out.splitlines() if "CHECK 5" in l][0]
+        self.assertIn("PASS", check5_line)
+        self.assertNotIn("ADVISORY", out)
+
+    def test_35_requirements_advisory_but_still_passes(self):
+        many_reqs = "\n".join(f"{i}. 요구사항 {i}" for i in range(1, 36))
+        text = make_valid_prd().replace(
+            "**요구사항:**\n1. 요구사항 1\n2. 요구사항 2\n**수용 기준:**\n- [ ] 기준 1",
+            f"**요구사항:**\n{many_reqs}\n**수용 기준:**\n- [ ] 기준 1",
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check5_line = [l for l in out.splitlines() if "CHECK 5" in l][0]
+        self.assertIn("PASS", check5_line)
+        advisory_lines = [l for l in out.splitlines() if "ADVISORY" in l]
+        self.assertEqual(len(advisory_lines), 1)
+        self.assertIn("Phase 1", advisory_lines[0])
+        self.assertIn("35", advisory_lines[0])
 
 
 class TestAssumptions(unittest.TestCase):
