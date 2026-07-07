@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linter-tests:
+    name: PRD linter unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run validate_prd.py test suite
+        run: python3 skills/prd-maker/scripts/test_validate_prd.py
+
+  skill-structure:
+    name: Skill structure integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check SKILL.md constraints and reference integrity
+        run: python3 .github/scripts/check_skill_structure.py
+
+  plugin-manifest:
+    name: Plugin manifest validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Deterministic gate: manifests parse and carry the required fields.
+      # Runs first so manifest problems fail clearly even if the CLI step is skipped.
+      - name: Validate manifests (deterministic)
+        run: python3 .github/scripts/check_manifests.py
+      # The real thing the maintainer runs locally. Best-effort: the CLI is
+      # installed fresh in the runner; if a future CLI change breaks headless
+      # invocation, the deterministic check above still gates the job.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: claude plugin validate
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          claude plugin validate .
