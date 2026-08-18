@@ -179,9 +179,13 @@ class TestStructureParsing(unittest.TestCase):
         self.assertFalse(crits[0]["checked"])
         self.assertTrue(crits[1]["checked"])
 
-    def test_phase_notes_captured(self):
-        notes = p.collect_phases(self.stripped())[0]["notes"]
-        self.assertTrue(any("목표" in x for x in notes))
+    def test_items_carry_their_source_line(self):
+        """The renderer keys anchors off these line numbers, so they must be
+        the real 1-based source lines."""
+        lines = SAMPLE_PRD.splitlines()
+        phase = p.collect_phases(self.stripped())[0]
+        for item in phase["requirements"] + phase["criteria"]:
+            self.assertIn(item["text"][:6], lines[item["line"] - 1])
 
     def test_fenced_examples_do_not_create_phantom_phases(self):
         text = "## 6. 요구사항\n\n```\n### Phase 9: 가짜\n- [ ] 가짜 기준\n```\n"
@@ -234,8 +238,43 @@ class TestDocumentAssembly(unittest.TestCase):
     def test_requirement_index_table_present(self):
         self.assertIn("req-index", self.build())
 
+    def test_requirement_index_has_acceptance_criteria_count(self):
+        html = self.build()
+        table = html.split('id="req-index"', 1)[1].split("</section>", 1)[0]
+        header = table.split("<tr>", 2)[1]
+        self.assertEqual(header.count("<th>"), 4)
+        self.assertIn("수용기준 수", header)
+        # Phase 1 has 2 checkboxes, phase 2 has 1.
+        row1 = table.split('href="#p1-r1"', 1)[1].split("</tr>", 1)[0]
+        row2 = table.split('href="#p2-r1"', 1)[1].split("</tr>", 1)[0]
+        self.assertTrue(row1.rstrip().endswith("<td>2</td>"), row1)
+        self.assertTrue(row2.rstrip().endswith("<td>1</td>"), row2)
+
+    def test_requirement_and_criteria_tiles_point_at_the_index(self):
+        tiles = self.build().split('class="dash"', 1)[1].split("</div>", 1)[0]
+        self.assertEqual(tiles.count('href="#req-index"'), 2)
+        self.assertEqual(tiles.count('href="#phase-1"'), 1)
+
+    def test_title_is_rendered_once(self):
+        self.assertEqual(self.build().count("<h1"), 1)
+
+    def test_source_markdown_is_linked_not_just_named(self):
+        html = self.build()
+        self.assertIn('<a href="PRD.md">PRD.md</a>', html)
+        header = html.split("<header", 1)[1].split("</header>", 1)[0]
+        self.assertIn('href="PRD.md"', header)
+
+    def test_assumption_items_carry_their_source_line(self):
+        doc = p.parse_document(SAMPLE_PRD, "PRD")
+        html = p.render_document(doc, "PRD.md", "t")
+        panel = html.split('id="assumptions"', 1)[1].split("</section>", 1)[0]
+        expected = "L%d" % doc["assumptions"][0][0]
+        self.assertIn(expected, panel)
+
     def test_footer_states_derived_status(self):
-        self.assertIn("PRD.md", self.build())
+        footer = self.build().split('<footer class="doc">', 1)[1].split("</footer>", 1)[0]
+        self.assertIn("PRD.md", footer)
+        self.assertIn("파생물", footer)
 
     def test_print_and_dark_css_present(self):
         html = self.build()
@@ -258,6 +297,85 @@ class TestDocumentAssembly(unittest.TestCase):
         self.assertIn("그냥 메모", html)
         self.assertNotIn("req-index", html)
         self.assertNotIn('id="p1-r1"', html)
+
+
+RICH_SECTION_6 = """# 리치 PRD
+
+## 6. 페이즈별 요구사항
+
+페이즈를 읽기 전에 알아야 할 전제입니다.
+
+| 필드 | 타입 |
+|---|---|
+| url | text |
+
+### Phase 1: 저장소
+**요구사항:**
+1. 스키마를 만든다
+
+| 컬럼 | 설명 |
+|---|---|
+| id | 기본키 |
+
+```sql
+SELECT 1;
+```
+
+**수용 기준:**
+- [ ] 스키마가 생성된다
+"""
+
+
+class TestSectionSixFidelity(unittest.TestCase):
+    """Section 6 is a derived view of the source, not a re-authored one.
+
+    It may not reorder the source (labels must stay with the list they name)
+    and it may not drop any of it.
+    """
+
+    def section_6(self, text):
+        doc = p.parse_document(text, "PRD")
+        html = p.render_document(doc, "PRD.md", "t")
+        return html.split('id="s6"', 1)[1].split("</section>", 1)[0]
+
+    def test_labels_stay_with_the_list_they_name(self):
+        s6 = self.section_6(SAMPLE_PRD)
+        req_label = s6.index("요구사항:</strong>")
+        first_req = s6.index('id="p1-r1"')
+        crit_label = s6.index("수용 기준:</strong>")
+        first_crit = s6.index('id="p1-a1"')
+        self.assertLess(req_label, first_req)
+        self.assertLess(first_req, crit_label)
+        self.assertLess(crit_label, first_crit)
+
+    def test_content_before_the_first_phase_survives(self):
+        s6 = self.section_6(RICH_SECTION_6)
+        self.assertIn("페이즈를 읽기 전에", s6)
+        preamble = s6.split('<ol class="tl">', 1)[0]
+        self.assertIn("<th>필드</th>", preamble)
+        self.assertIn("<td>url</td>", preamble)
+
+    def test_tables_and_fences_inside_a_phase_survive(self):
+        s6 = self.section_6(RICH_SECTION_6)
+        phase = s6.split('<ol class="tl">', 1)[1]
+        self.assertIn("<th>컬럼</th>", phase)
+        self.assertIn("<td>기본키</td>", phase)
+        self.assertIn("<pre><code>SELECT 1;</code></pre>", phase)
+        # not flattened into literal pipe/dash paragraphs
+        self.assertNotIn("<p>| ", s6)
+
+    def test_ids_still_land_on_the_right_items(self):
+        s6 = self.section_6(RICH_SECTION_6)
+        self.assertIn(
+            '<li id="p1-r1"><span class="rid">P1-R1</span> 스키마를 만든다</li>', s6
+        )
+        # the anchor must land on the criterion itself, not drift to a
+        # neighbouring line once a table and a fence sit between them
+        self.assertIn(
+            '<li id="p1-a1" class="todo"><span class="mark">☐</span> '
+            '<span class="rid">P1-A1</span> 스키마가 생성된다</li>',
+            s6,
+        )
 
 
 SCRIPT_PATH = pathlib.Path(__file__).parent / "prd_to_html.py"
@@ -297,6 +415,19 @@ class TestCLI(unittest.TestCase):
         code, out = run_cli([str(src), "--output", str(dest)])
         self.assertEqual(code, 0, out)
         self.assertIn("러닝 크루", dest.read_text(encoding="utf-8"))
+
+    def test_output_into_missing_directory_exits_2(self):
+        src = self.write_tmp(SAMPLE_PRD)
+        dest = pathlib.Path(tempfile.gettempdir()) / "no_such_dir_prd2html" / "o.html"
+        code, out = run_cli([str(src), "--output", str(dest)])
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot write", out)
+
+    def test_output_onto_a_directory_exits_2(self):
+        src = self.write_tmp(SAMPLE_PRD)
+        code, out = run_cli([str(src), "--output", tempfile.gettempdir()])
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot write", out)
 
     def test_missing_argument_exits_2(self):
         code, out = run_cli([])

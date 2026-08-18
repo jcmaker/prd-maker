@@ -10,7 +10,8 @@ Usage:
 
 Exit codes:
     0 - HTML written
-    2 - usage error (bad arguments, file not found, or not valid UTF-8)
+    2 - usage error (bad arguments, file not found, not valid UTF-8, or an
+        --output path that cannot be written)
 """
 
 import re
@@ -22,6 +23,7 @@ from validate_prd import (
     CHECKBOX_RE,
     NON_GOAL_ITEM_RE,
     NUMBERED_ITEM_RE,
+    PHASE_RE,
     find_assumptions,
     find_phase_blocks,
     find_section_body,
@@ -35,7 +37,7 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 # --------------------------------------------------------------------------
-# Region 1 of 4: inline markdown rendering
+# Region 1 of 5: inline markdown rendering
 # --------------------------------------------------------------------------
 
 INLINE_CODE_RE = re.compile(r"`([^`]+)`")
@@ -77,7 +79,7 @@ def render_inline(text):
 
 
 # --------------------------------------------------------------------------
-# Region 2 of 4: block markdown rendering
+# Region 2 of 5: block markdown rendering
 # --------------------------------------------------------------------------
 
 HEADING_LINE_RE = re.compile(r"^(#{1,3})\s+(.*)$")
@@ -103,13 +105,29 @@ def _split_table_row(line):
     return [c.strip() for c in line.strip().strip("|").split("|")]
 
 
-def render_blocks(lines, used_slugs=None):
+def render_blocks(lines, used_slugs=None, ids=None):
     """Render markdown lines to HTML. Returns (html, headings).
 
     headings is a list of (level, text, anchor) for every #/##/### heading,
     in document order — the table of contents is built from it.
+
+    `ids` optionally maps a line index to a `{"id": ..., "anchor": ...}` record;
+    the list item rendered from that line gets the anchor as its HTML id and the
+    id printed beside it. Section 6 uses it to attach `P1-R2` / `P1-A3` labels
+    without taking the content away from this renderer.
     """
     used = used_slugs if used_slugs is not None else set()
+
+    def decorate(index):
+        """(id attribute, visible id label) for the item on this line."""
+        item = ids.get(index) if ids else None
+        if not item:
+            return "", ""
+        return (
+            ' id="%s"' % item["anchor"],
+            '<span class="rid">%s</span> ' % escape(item["id"]),
+        )
+
     out, headings = [], []
     i, n = 0, len(lines)
 
@@ -177,9 +195,10 @@ def render_blocks(lines, used_slugs=None):
             checked = m.group(1).lower() == "x"
             mark = "☑" if checked else "☐"
             cls = "done" if checked else "todo"
+            attr, rid = decorate(i)
             out.append(
-                '<li class="%s"><span class="mark">%s</span> %s</li>'
-                % (cls, mark, render_inline(m.group(2)))
+                '<li%s class="%s"><span class="mark">%s</span> %s%s</li>'
+                % (attr, cls, mark, rid, render_inline(m.group(2)))
             )
             i += 1
             continue
@@ -190,7 +209,10 @@ def render_blocks(lines, used_slugs=None):
                 close(open_tags)
                 out.append("<ol>")
                 open_tags.append("ol")
-            out.append("<li>" + render_inline(m.group(1)) + "</li>")
+            attr, rid = decorate(i)
+            out.append(
+                "<li%s>%s%s</li>" % (attr, rid, render_inline(m.group(1)))
+            )
             i += 1
             continue
 
@@ -222,8 +244,76 @@ def render_blocks(lines, used_slugs=None):
     return "\n".join(out), headings
 
 
+def split_phase_chunks(chunk_lines):
+    """Split raw section-6 lines into (pre_phase_lines, [(offset, lines), ...]).
+
+    `offset` is the index in `chunk_lines` of the group's first body line, so a
+    caller holding absolute line numbers can address into the group.
+
+    The split rule mirrors `validate_prd.find_phase_blocks` exactly — `### ` at
+    column 0, outside fenced blocks — so the groups line up one-for-one with
+    what `collect_phases` parsed. Nothing is dropped: every line lands either in
+    the pre-phase list or in a phase group.
+    """
+    pre, groups = [], []
+    fence = None
+    for i, line in enumerate(chunk_lines):
+        bucket = groups[-1][1] if groups else pre
+        stripped = line.lstrip()
+        if fence is not None:
+            bucket.append(line)
+            if stripped.startswith(fence):
+                fence = None
+            continue
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            fence = stripped[:3]
+            bucket.append(line)
+            continue
+        if PHASE_RE.match(line):
+            groups.append((i + 1, []))  # the heading itself is rendered by caller
+            continue
+        bucket.append(line)
+    return pre, groups
+
+
+def render_phase_section(chunk_lines, chunk_start, phases, used_slugs):
+    """Render section 6 as a timeline of phase cards.
+
+    Bodies go through `render_blocks` on the *raw* lines, so source order,
+    prose before the first phase, tables, and fenced code all survive; the only
+    thing the parsed model contributes is the `P1-R2` / `P1-A3` anchors, keyed
+    by source line number. `chunk_start` is the 1-based source line of
+    `chunk_lines[0]`.
+    """
+    pre_lines, groups = split_phase_chunks(chunk_lines)
+    if len(groups) != len(phases):
+        # Should not happen — same split rule as the parser. If it ever does,
+        # render everything plainly rather than dropping a phase.
+        return render_blocks(chunk_lines, used_slugs)
+
+    html, headings = render_blocks(pre_lines, used_slugs)
+    out = [html, '<ol class="tl">']
+    for ph, (offset, lines) in zip(phases, groups):
+        used_slugs.add(ph["anchor"])
+        headings.append((3, ph["title"], ph["anchor"]))
+        ids = {
+            item["line"] - chunk_start - offset: item
+            for item in ph["requirements"] + ph["criteria"]
+        }
+        body, sub_headings = render_blocks(lines, used_slugs, ids)
+        headings.extend(sub_headings)
+        out.append(
+            '<li class="phase"><h3 id="%s">%s</h3>'
+            % (ph["anchor"], escape(ph["title"]))
+        )
+        out.append(body)
+        out.append("</li>")
+    out.append("</ol>")
+    return "\n".join(out), headings
+
+
 # --------------------------------------------------------------------------
-# Region 3 of 4: structure parsing (reuses validate_prd's regexes)
+# Region 3 of 5: structure parsing (reuses validate_prd's regexes)
 # --------------------------------------------------------------------------
 
 SECTION_HEADING_RE = re.compile(r"^##\s+(?:(\d+)\.)?")
@@ -258,16 +348,17 @@ def collect_non_goals(stripped_lines):
 def collect_phases(stripped_lines):
     """Phases of section 6, with stable IDs for requirements and criteria.
 
-    Phase-internal order is normalized to notes -> requirements -> criteria,
-    which is the order the PRD template already writes them in.
+    This is an index over the source, not a replacement for it: each item keeps
+    its 1-based source `line` so the renderer can attach the id to the element
+    it renders from that same line, in source order.
     """
     body = find_section_body(stripped_lines, 6)
     if body is None:
         return []
     phases = []
     for index, (title, block) in enumerate(find_phase_blocks(body), start=1):
-        notes, reqs, crits = [], [], []
-        for _, text in block:
+        reqs, crits = [], []
+        for line_no, text in block:
             content = text.strip()
             if not content:
                 continue
@@ -278,6 +369,7 @@ def collect_phases(stripped_lines):
                     {
                         "id": "P%d-A%d" % (index, k),
                         "anchor": "p%d-a%d" % (index, k),
+                        "line": line_no,
                         "text": content[len(m.group(0)):].strip(),
                         "checked": "x" in m.group(0).lower(),
                     }
@@ -288,17 +380,15 @@ def collect_phases(stripped_lines):
                     {
                         "id": "P%d-R%d" % (index, k),
                         "anchor": "p%d-r%d" % (index, k),
+                        "line": line_no,
                         "text": NUMBER_PREFIX_RE.sub("", content).strip(),
                     }
                 )
-            else:
-                notes.append(content)
         phases.append(
             {
                 "index": index,
                 "title": title,
                 "anchor": "phase-%d" % index,
-                "notes": notes,
                 "requirements": reqs,
                 "criteria": crits,
             }
@@ -307,11 +397,14 @@ def collect_phases(stripped_lines):
 
 
 def split_sections(raw_lines):
-    """Split raw lines at every `## ` heading. The preamble chunk has num=None."""
-    chunks = [{"num": None, "lines": []}]
+    """Split raw lines at every `## ` heading. The preamble chunk has num=None.
+
+    Each chunk records `start`, the 1-based source line of its first line.
+    """
+    chunks = [{"num": None, "start": 1, "lines": []}]
     in_fence = False
     fence = None
-    for line in raw_lines:
+    for i, line in enumerate(raw_lines):
         stripped = line.strip()
         if in_fence:
             if stripped.startswith(fence):
@@ -325,10 +418,36 @@ def split_sections(raw_lines):
         m = SECTION_HEADING_RE.match(stripped)
         if m:
             num = int(m.group(1)) if m.group(1) else None
-            chunks.append({"num": num, "lines": [line]})
+            chunks.append({"num": num, "start": i + 1, "lines": [line]})
         else:
             chunks[-1]["lines"].append(line)
     return [c for c in chunks if any(x.strip() for x in c["lines"])]
+
+
+def drop_title_line(lines):
+    """Remove the first top-level `# ` line, outside fences.
+
+    The header already prints the title; rendering it again would give the page
+    two `<h1>` elements. Mirrors `extract_title`'s match so exactly the line the
+    title came from is the line dropped.
+    """
+    out, fence, dropped = [], None, False
+    for line in lines:
+        stripped = line.lstrip()
+        if fence is not None:
+            out.append(line)
+            if stripped.startswith(fence):
+                fence = None
+            continue
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            fence = stripped[:3]
+            out.append(line)
+            continue
+        if not dropped and line.startswith("# "):
+            dropped = True
+            continue
+        out.append(line)
+    return out
 
 
 def parse_document(text, fallback_title):
@@ -338,12 +457,17 @@ def parse_document(text, fallback_title):
 
     used_slugs = set()
     headings, parts = [], []
-    for chunk in split_sections(raw):
+    for position, chunk in enumerate(split_sections(raw)):
         num = chunk["num"]
         if num == 6 and phases:
-            html, hs = render_phase_section(chunk["lines"], phases, used_slugs)
+            html, hs = render_phase_section(
+                chunk["lines"], chunk["start"], phases, used_slugs
+            )
         else:
-            html, hs = render_blocks(chunk["lines"], used_slugs)
+            lines = chunk["lines"]
+            if position == 0 and num is None:
+                lines = drop_title_line(lines)
+            html, hs = render_blocks(lines, used_slugs)
         if num:
             attrs = 'class="sec sec-%d" id="s%d"' % (num, num)
         else:
@@ -364,47 +488,8 @@ def parse_document(text, fallback_title):
     }
 
 
-def render_phase_section(chunk_lines, phases, used_slugs):
-    """Render section 6 as phase cards so requirements get stable anchors."""
-    heading = chunk_lines[0].strip() if chunk_lines else "## 6."
-    head_html, headings = render_blocks([heading], used_slugs)
-    out = [head_html, '<ol class="tl">']
-    for ph in phases:
-        used_slugs.add(ph["anchor"])
-        headings.append((3, ph["title"], ph["anchor"]))
-        out.append('<li class="phase"><h3 id="%s">%s</h3>' % (ph["anchor"], escape(ph["title"])))
-        for note in ph["notes"]:
-            out.append("<p>" + render_inline(note) + "</p>")
-        if ph["requirements"]:
-            out.append("<ol>")
-            for r in ph["requirements"]:
-                out.append(
-                    '<li id="%s"><span class="rid">%s</span> %s</li>'
-                    % (r["anchor"], r["id"], render_inline(r["text"]))
-                )
-            out.append("</ol>")
-        if ph["criteria"]:
-            out.append('<ul class="crit">')
-            for c in ph["criteria"]:
-                out.append(
-                    '<li id="%s" class="%s"><span class="mark">%s</span>'
-                    '<span class="rid">%s</span> %s</li>'
-                    % (
-                        c["anchor"],
-                        "done" if c["checked"] else "todo",
-                        "☑" if c["checked"] else "☐",
-                        c["id"],
-                        render_inline(c["text"]),
-                    )
-                )
-            out.append("</ul>")
-        out.append("</li>")
-    out.append("</ol>")
-    return "\n".join(out), headings
-
-
 # --------------------------------------------------------------------------
-# Region 4 of 4: HTML template assembly
+# Region 4 of 5: HTML template assembly
 # --------------------------------------------------------------------------
 
 STYLE = """
@@ -532,9 +617,12 @@ def render_document(doc, source_name, generated_at):
 
     tiles = []
     if phases:
+        # The index table is where a reader compares requirements and criteria;
+        # it only exists when there are requirements to list.
+        detail = "req-index" if reqs else phases[0]["anchor"]
         tiles.append(_tile(phases[0]["anchor"], len(phases), labels["phases"]))
-        tiles.append(_tile(phases[0]["anchor"], len(reqs), labels["requirements"]))
-        tiles.append(_tile(phases[0]["anchor"], len(crits), labels["criteria"]))
+        tiles.append(_tile(detail, len(reqs), labels["requirements"]))
+        tiles.append(_tile(detail, len(crits), labels["criteria"]))
     if doc["non_goals"]:
         tiles.append(_tile("s4", len(doc["non_goals"]), labels["non_goals"]))
     if doc["assumptions"]:
@@ -543,8 +631,11 @@ def render_document(doc, source_name, generated_at):
 
     panel = ""
     if doc["assumptions"]:
+        # The line number, not a link: the HTML has no per-line anchors, and the
+        # edit belongs in the source markdown anyway.
         items = "".join(
-            "<li>%s</li>" % render_inline(text) for _, text in doc["assumptions"]
+            '<li><span class="rid">L%d</span> %s</li>' % (line_no, render_inline(text))
+            for line_no, text in doc["assumptions"]
         )
         panel = (
             '<section class="panel assume" id="assumptions">'
@@ -555,17 +646,34 @@ def render_document(doc, source_name, generated_at):
     index = ""
     if reqs:
         rows = "".join(
-            '<tr><td><a href="#%s">%s</a></td><td>%s</td><td>%s</td></tr>'
-            % (r["anchor"], r["id"], escape(ph["title"]), render_inline(r["text"]))
+            '<tr><td><a href="#%s">%s</a></td><td>%s</td><td>%s</td><td>%d</td></tr>'
+            % (
+                r["anchor"],
+                r["id"],
+                escape(ph["title"]),
+                render_inline(r["text"]),
+                len(ph["criteria"]),
+            )
             for ph in phases
             for r in ph["requirements"]
         )
         index = (
             '<section class="panel" id="req-index"><h2>%s</h2>'
-            '<div class="scroll"><table><tr><th>ID</th><th>%s</th><th>%s</th></tr>'
+            '<div class="scroll"><table>'
+            "<tr><th>ID</th><th>%s</th><th>%s</th><th>%s</th></tr>"
             "%s</table></div></section>"
-            % (labels["index"], labels["phase"], labels["requirement"], rows)
+            % (
+                labels["index"],
+                labels["phase"],
+                labels["requirement"],
+                labels["criteria_count"],
+                rows,
+            )
         )
+
+    # Layer 1 of the spec wants a relative link back to the source markdown; the
+    # HTML is written as its sibling by default, so the bare name resolves.
+    src_link = '<a href="%s">%s</a>' % (escape(source_name), escape(source_name))
 
     return TEMPLATE % {
         "lang": doc["lang"],
@@ -573,7 +681,7 @@ def render_document(doc, source_name, generated_at):
         "style": STYLE,
         "script": SCRIPT,
         "skip": escape(labels["skip"]),
-        "source": escape(source_name),
+        "source": src_link,
         "generated": escape(generated_at),
         "toc_label": escape(labels["toc"]),
         "toc": toc_items,
@@ -581,7 +689,7 @@ def render_document(doc, source_name, generated_at):
         "panel": panel,
         "body": doc["sections_html"],
         "index": index,
-        "footer": labels["footer"] % escape(source_name),
+        "footer": labels["footer"] % src_link,
     }
 
 
@@ -591,6 +699,7 @@ LABELS = {
         "non_goals": "Non-Goals", "assumptions": "가정",
         "assume_hint": "아래 항목은 사용자가 확인하지 않은 내용입니다. 검토해 주세요.",
         "index": "요구사항 인덱스", "phase": "페이즈", "requirement": "요구사항",
+        "criteria_count": "수용기준 수",
         "toc": "목차", "skip": "본문으로 건너뛰기",
         "footer": "이 문서는 <code>%s</code>에서 생성된 파생물입니다. 수정은 원본 마크다운에서 하세요.",
     },
@@ -599,6 +708,7 @@ LABELS = {
         "non_goals": "Non-Goals", "assumptions": "Assumptions",
         "assume_hint": "These items were not confirmed by the user. Please review them.",
         "index": "Requirement index", "phase": "Phase", "requirement": "Requirement",
+        "criteria_count": "Criteria",
         "toc": "Contents", "skip": "Skip to content",
         "footer": "Generated from <code>%s</code>. Edit the source markdown, not this file.",
     },
@@ -641,7 +751,7 @@ TEMPLATE = """<!doctype html>
 
 
 # --------------------------------------------------------------------------
-# Region 4 of 4: CLI
+# Region 5 of 5: CLI
 # --------------------------------------------------------------------------
 
 USAGE = "Usage: python3 prd_to_html.py <path-to-PRD.md> [--output <path.html>]"
@@ -677,9 +787,14 @@ def main(argv):
 
     doc = parse_document(text, src.stem)
     generated = datetime.now().strftime("%Y-%m-%d %H:%M")
-    out_path.write_text(
-        render_document(doc, src.name, generated), encoding="utf-8"
-    )
+    try:
+        out_path.write_text(
+            render_document(doc, src.name, generated), encoding="utf-8"
+        )
+    except OSError as exc:
+        # A bad --output is a usage error, same contract as a missing input.
+        print("Error: cannot write %s: %s" % (out_path, exc), file=sys.stderr)
+        return 2
     print("Wrote %s (assumptions: %d)" % (out_path, len(doc["assumptions"])))
     return 0
 
