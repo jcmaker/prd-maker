@@ -18,7 +18,7 @@ Run the same checks CI runs, from the repo root:
 ./scripts/check-all.sh
 ```
 
-All three must pass. CI runs them on every pull request.
+All checks must pass. CI runs them on every pull request. `ruff` is optional locally (the script skips it if not installed) but CI always enforces it.
 
 ## Conventions that keep the skill healthy
 
@@ -30,7 +30,7 @@ All three must pass. CI runs them on every pull request.
 ## Pull requests
 
 1. Fork the repo and branch from `main`.
-2. Make your change and run the three checks above.
+2. Make your change and run `./scripts/check-all.sh`.
 3. Open a PR describing **what** changed and **why**. Link the issue if there is one (`Closes #123`).
 4. CI must be green. A maintainer reviews and merges — you don't need a separate approver.
 

@@ -1,0 +1,5 @@
+# F catches real bugs (F811 = duplicate imports, the exact issue PR #10 had).
+# E9 catches syntax errors. Both pass on the current codebase with zero changes.
+# Wider rulesets (e.g. the default) flag 19 pre-existing issues - out of scope here.
+[lint]
+select = ["F", "E9"]
