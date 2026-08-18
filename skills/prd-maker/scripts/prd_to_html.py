@@ -16,6 +16,14 @@ Exit codes:
 import re
 import sys
 
+from validate_prd import (
+    CHECKBOX_RE,
+    NON_GOAL_ITEM_RE,
+    NUMBERED_ITEM_RE,
+    find_phase_blocks,
+    find_section_body,
+)
+
 # Windows consoles often default to cp1252, which can't encode Korean text.
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -208,3 +216,112 @@ def render_blocks(lines, used_slugs=None):
 
     close(open_tags)
     return "\n".join(out), headings
+
+
+# --------------------------------------------------------------------------
+# Region 3 of 4: structure parsing (reuses validate_prd's regexes)
+# --------------------------------------------------------------------------
+
+SECTION_HEADING_RE = re.compile(r"^##\s+(?:(\d+)\.)?")
+NUMBER_PREFIX_RE = re.compile(r"^\d+\.\s*")
+
+
+def detect_lang(text):
+    """Guess the document language from the Hangul share of its letters."""
+    hangul = sum(1 for ch in text if "가" <= ch <= "힣")
+    letters = sum(1 for ch in text if ch.isalpha())
+    return "ko" if letters and hangul / letters > 0.3 else "en"
+
+
+def extract_title(lines, fallback):
+    for line in lines:
+        if line.startswith("# "):
+            return line[2:].strip()
+    return fallback
+
+
+def collect_non_goals(stripped_lines):
+    body = find_section_body(stripped_lines, 4)
+    if body is None:
+        return []
+    return [
+        text.strip().lstrip("-*").strip()
+        for _, text in body
+        if NON_GOAL_ITEM_RE.match(text)
+    ]
+
+
+def collect_phases(stripped_lines):
+    """Phases of section 6, with stable IDs for requirements and criteria.
+
+    Phase-internal order is normalized to notes -> requirements -> criteria,
+    which is the order the PRD template already writes them in.
+    """
+    body = find_section_body(stripped_lines, 6)
+    if body is None:
+        return []
+    phases = []
+    for index, (title, block) in enumerate(find_phase_blocks(body), start=1):
+        notes, reqs, crits = [], [], []
+        for _, text in block:
+            content = text.strip()
+            if not content:
+                continue
+            m = CHECKBOX_RE.match(content)
+            if m:
+                k = len(crits) + 1
+                crits.append(
+                    {
+                        "id": "P%d-A%d" % (index, k),
+                        "anchor": "p%d-a%d" % (index, k),
+                        "text": content[len(m.group(0)):].strip(),
+                        "checked": "x" in m.group(0).lower(),
+                    }
+                )
+            elif NUMBERED_ITEM_RE.match(content):
+                k = len(reqs) + 1
+                reqs.append(
+                    {
+                        "id": "P%d-R%d" % (index, k),
+                        "anchor": "p%d-r%d" % (index, k),
+                        "text": NUMBER_PREFIX_RE.sub("", content).strip(),
+                    }
+                )
+            else:
+                notes.append(content)
+        phases.append(
+            {
+                "index": index,
+                "title": title,
+                "anchor": "phase-%d" % index,
+                "notes": notes,
+                "requirements": reqs,
+                "criteria": crits,
+            }
+        )
+    return phases
+
+
+def split_sections(raw_lines):
+    """Split raw lines at every `## ` heading. The preamble chunk has num=None."""
+    chunks = [{"num": None, "lines": []}]
+    in_fence = False
+    fence = None
+    for line in raw_lines:
+        stripped = line.strip()
+        if in_fence:
+            if stripped.startswith(fence):
+                in_fence = False
+            chunks[-1]["lines"].append(line)
+            continue
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_fence, fence = True, stripped[:3]
+            chunks[-1]["lines"].append(line)
+            continue
+        m = SECTION_HEADING_RE.match(stripped)
+        if m:
+            num = int(m.group(1)) if m.group(1) else None
+            chunks.append({"num": num, "lines": [line]})
+        else:
+            chunks[-1]["lines"].append(line)
+    return [c for c in chunks if any(x.strip() for x in c["lines"])]

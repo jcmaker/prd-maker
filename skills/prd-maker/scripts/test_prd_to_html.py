@@ -102,5 +102,95 @@ class TestRenderBlocks(unittest.TestCase):
         self.assertIn("~~취소선~~", html)
 
 
+SAMPLE_PRD = """# 러닝 크루 PRD
+
+> **AI 에이전트에게:** 이 문서는 구현 지침입니다.
+
+## 1. 개요
+동네 러닝 크루의 기록을 남긴다.
+
+## 4. Non-Goals (하지 않는 것)
+- 이번 버전에서 결제는 구현하지 않는다.
+- 이번 버전에서 소셜 로그인은 구현하지 않는다.
+- 이번 버전에서 푸시 알림은 구현하지 않는다. (가정)
+
+## 6. 페이즈별 요구사항
+
+### Phase 1: 기본 동작
+**목표:** 기록을 저장한다
+**요구사항:**
+1. 기록을 입력한다
+2. 기록을 저장한다
+**수용 기준:**
+- [ ] 기록 저장 후 목록에 보인다
+- [x] 앱이 실행된다
+
+### Phase 2: 확장 (Phase 1의 저장소 필요)
+**목표:** 공유한다
+**요구사항:**
+1. 링크를 만든다
+**수용 기준:**
+- [ ] 링크로 기록이 열린다
+"""
+
+
+class TestStructureParsing(unittest.TestCase):
+    def stripped(self, text=SAMPLE_PRD):
+        from validate_prd import strip_fenced_blocks
+
+        return strip_fenced_blocks(text.splitlines())
+
+    def test_detect_lang_korean(self):
+        self.assertEqual(p.detect_lang("한국어 문서입니다"), "ko")
+
+    def test_detect_lang_english(self):
+        self.assertEqual(p.detect_lang("This is an English PRD"), "en")
+
+    def test_extract_title(self):
+        self.assertEqual(
+            p.extract_title(SAMPLE_PRD.splitlines(), "PRD"), "러닝 크루 PRD"
+        )
+
+    def test_extract_title_falls_back(self):
+        self.assertEqual(p.extract_title(["본문뿐"], "PRD"), "PRD")
+
+    def test_collect_non_goals(self):
+        goals = p.collect_non_goals(self.stripped())
+        self.assertEqual(len(goals), 3)
+        self.assertIn("결제", goals[0])
+
+    def test_collect_phases_counts(self):
+        phases = p.collect_phases(self.stripped())
+        self.assertEqual(len(phases), 2)
+        self.assertEqual(len(phases[0]["requirements"]), 2)
+        self.assertEqual(len(phases[0]["criteria"]), 2)
+
+    def test_requirement_ids(self):
+        phases = p.collect_phases(self.stripped())
+        self.assertEqual(phases[0]["requirements"][1]["id"], "P1-R2")
+        self.assertEqual(phases[1]["requirements"][0]["anchor"], "p2-r1")
+
+    def test_criteria_ids_and_checked_state(self):
+        crits = p.collect_phases(self.stripped())[0]["criteria"]
+        self.assertEqual(crits[0]["id"], "P1-A1")
+        self.assertFalse(crits[0]["checked"])
+        self.assertTrue(crits[1]["checked"])
+
+    def test_phase_notes_captured(self):
+        notes = p.collect_phases(self.stripped())[0]["notes"]
+        self.assertTrue(any("목표" in x for x in notes))
+
+    def test_fenced_examples_do_not_create_phantom_phases(self):
+        text = "## 6. 요구사항\n\n```\n### Phase 9: 가짜\n- [ ] 가짜 기준\n```\n"
+        self.assertEqual(p.collect_phases(self.stripped(text)), [])
+
+    def test_split_sections(self):
+        chunks = p.split_sections(SAMPLE_PRD.splitlines())
+        nums = [c["num"] for c in chunks]
+        self.assertEqual(nums[0], None)
+        self.assertIn(1, nums)
+        self.assertIn(6, nums)
+
+
 if __name__ == "__main__":
     unittest.main()
