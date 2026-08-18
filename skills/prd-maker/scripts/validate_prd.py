@@ -3,9 +3,9 @@
 
 Checks are language-agnostic: they match markdown structure and numbers only,
 never heading words, because the generated PRD is written in the user's language.
-Fenced code blocks (``` ... ``` or ~~~ ... ~~~) are stripped before all checks — including the
-ASSUMPTIONS listing — so markdown examples inside the PRD cannot cause false
-failures.
+Fenced code blocks (``` ... ``` or ~~~ ... ~~~) are stripped before all
+checks — including the ASSUMPTIONS listing — so markdown examples inside
+the PRD cannot cause false failures.
 
 Usage:
     python3 validate_prd.py <path-to-PRD.md>

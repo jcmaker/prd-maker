@@ -184,7 +184,6 @@ class TestFencedCodeBlocks(unittest.TestCase):
         self.assertIn("PASS", check2_line)
 
 
-
 class TestCheck2Sections(unittest.TestCase):
     def test_out_of_order_only_fails(self):
         # All 7 sections present exactly once, but sections 2 and 3 swapped.
