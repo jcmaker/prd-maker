@@ -65,7 +65,7 @@ jobs:
       # installed fresh in the runner; if a future CLI change breaks headless
       # invocation, the deterministic check above still gates the job.
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
       - name: claude plugin validate
