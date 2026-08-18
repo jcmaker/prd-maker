@@ -718,7 +718,14 @@ class TestDocumentAssembly(unittest.TestCase):
         doc = p.parse_document(SAMPLE_PRD, "PRD")
         html = p.render_document(doc, "PRD.md", "t")
         self.assertEqual(len(doc["assumptions"]), 1)
-        self.assertIn("assume", html)
+        self.assertIn('id="assumptions"', html)
+        panel = html.split('id="assumptions"', 1)[1].split("</section>", 1)[0]
+        self.assertIn("푸시 알림", panel)
+
+    def test_assumption_panel_absent_when_no_assumptions(self):
+        doc = p.parse_document("# 메모\n\n확인되지 않은 내용 없음.\n", "메모")
+        self.assertEqual(doc["assumptions"], [])
+        self.assertNotIn('id="assumptions"', p.render_document(doc, "memo.md", "t"))
 
     def test_requirement_anchors_exist(self):
         html = self.build()
