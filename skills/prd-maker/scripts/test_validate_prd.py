@@ -290,17 +290,28 @@ class TestIndentedItems(unittest.TestCase):
         check4_line = [l for l in out.splitlines() if "CHECK 4" in l][0]
         self.assertIn("PASS", check4_line)
 
-    def test_top_level_numbered_items_still_count_for_check5(self):
-        """CHECK 5 still counts top-level numbered items only (option a)."""
-        many_reqs = "\n".join(f"{i}. 요구사항 {i}" for i in range(1, 52))
+    def test_indented_numbered_items_not_counted_for_check5(self):
+        """CHECK 5 counts top-level numbered items only (option a of issue #17).
+
+        26 top-level requirements + 25 indented sub-items = 51 numbered lines,
+        but only the 26 top-level ones are requirements, so the phase stays
+        under the cap of 50.
+        """
+        reqs = []
+        for i in range(1, 27):
+            reqs.append(f"{i}. 요구사항 {i}")
+            if i <= 25:
+                reqs.append(f"  {i}. 세부 {i}")
+        many_reqs = "\n".join(reqs)
         text = make_valid_prd().replace(
             "**요구사항:**\n1. 요구사항 1\n2. 요구사항 2\n**수용 기준:**\n- [ ] 기준 1",
             f"**요구사항:**\n{many_reqs}\n**수용 기준:**\n- [ ] 기준 1",
         )
         code, out = run_validator(text)
-        self.assertEqual(code, 1)
+        self.assertEqual(code, 0, msg=out)
         check5_line = [l for l in out.splitlines() if "CHECK 5" in l][0]
-        self.assertIn("FAIL", check5_line)
+        self.assertIn("PASS", check5_line)
+        self.assertNotIn("ADVISORY", out)
 
 
 class TestCheck5RequirementsCap(unittest.TestCase):
