@@ -34,6 +34,7 @@ PHASE_RE = re.compile(r"^### ")
 CHECKBOX_RE = re.compile(r"^- \[[ xX]\]")
 NUMBERED_ITEM_RE = re.compile(r"^\d+\.")
 ASSUMPTION_RE = re.compile(r"\(가정\)|\(assumption\)", re.IGNORECASE)
+INLINE_CODE_RE = re.compile(r"`[^`]*`")
 
 REQUIRED_SECTIONS = list(range(1, 8))
 MIN_NON_GOALS = 3
@@ -222,10 +223,17 @@ def check5_requirements_cap(lines):
 
 
 def find_assumptions(lines):
+    """List every line that *applies* the assumption marker.
+
+    Inline code spans are removed before matching: a backticked `(가정)` is the
+    document naming the marker, not applying it — the mandated PRD header
+    blockquote does exactly that, and counting it made every PRD report one
+    phantom assumption. Real assumptions are written bare.
+    """
     return [
         (i + 1, line.strip())
         for i, line in enumerate(lines)
-        if ASSUMPTION_RE.search(line)
+        if ASSUMPTION_RE.search(INLINE_CODE_RE.sub("", line))
     ]
 
 
