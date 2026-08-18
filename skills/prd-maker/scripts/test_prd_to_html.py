@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from html.parser import HTMLParser
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 
@@ -322,6 +323,40 @@ class TestCLI(unittest.TestCase):
         self.assertIn("<html", target.read_text(encoding="utf-8"))
 
 
+class TagBalance(HTMLParser):
+    """Fails on unbalanced or mis-nested tags.
+
+    `HTMLParser` alone accepts almost anything — it recovers silently from
+    unclosed and mismatched tags — so feeding it the output only proves the
+    generator did not raise. This subclass tracks the open-tag stack, which is
+    what "well-formed" in spec section 7 actually means.
+    """
+
+    VOID = {
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "param", "source", "track", "wbr",
+    }
+
+    def __init__(self):
+        super().__init__()
+        self.stack = []
+        self.errors = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in self.VOID:
+            self.stack.append(tag)
+
+    def handle_endtag(self, tag):
+        if tag in self.VOID:
+            return
+        if not self.stack:
+            self.errors.append("</%s> with nothing open" % tag)
+        elif self.stack[-1] != tag:
+            self.errors.append("expected </%s>, got </%s>" % (self.stack[-1], tag))
+        else:
+            self.stack.pop()
+
+
 class TestSpecAcceptance(unittest.TestCase):
     """The six checks named in section 7 of the design spec."""
 
@@ -331,15 +366,15 @@ class TestSpecAcceptance(unittest.TestCase):
         return doc, p.render_document(doc, pathlib.Path(path).name, "t")
 
     def test_1_examples_are_well_formed(self):
-        from html.parser import HTMLParser
-
         files = sorted(EXAMPLES.glob("*.md"))
         self.assertTrue(files, "docs/examples/*.md not found")
         for f in files:
             _, html = self.convert(f)
-            parser = HTMLParser()
-            parser.feed(html)
-            parser.close()
+            checker = TagBalance()
+            checker.feed(html)
+            checker.close()
+            self.assertEqual(checker.errors, [], f.name)
+            self.assertEqual(checker.stack, [], "%s: unclosed %s" % (f.name, checker.stack))
 
     def test_2_self_contained(self):
         for f in sorted(EXAMPLES.glob("*.md")):
@@ -368,6 +403,9 @@ class TestSpecAcceptance(unittest.TestCase):
         doc = p.parse_document("# 회의록\n\n- 항목 하나\n- 항목 둘\n", "회의록")
         html = p.render_document(doc, "notes.md", "t")
         self.assertIn("회의록", html)
+        # the body must survive, not just the title
+        self.assertIn("항목 하나", html)
+        self.assertIn("항목 둘", html)
         self.assertNotIn("req-index", html)
 
     def test_6_print_and_dark_css(self):
