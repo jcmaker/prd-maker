@@ -83,7 +83,7 @@ class TestRenderInline(unittest.TestCase):
     def test_javascript_url_is_not_rendered_as_link(self):
         out = p.render_inline("[click](javascript:alert(1))")
         self.assertNotIn("<a ", out)
-        self.assertNotIn("javascript:alert(1)", out.replace("&", "&"))
+        self.assertIn("[click]", out)  # left as inert text, not a link
 
     def test_raw_html_is_escaped_not_rendered(self):
         out = p.render_inline("<script>alert(1)</script>")
@@ -773,8 +773,11 @@ def parse_document(text, fallback_title):
             html, hs = render_phase_section(chunk["lines"], phases, used_slugs)
         else:
             html, hs = render_blocks(chunk["lines"], used_slugs)
-        cls = "sec sec-%d" % num if num else "sec"
-        parts.append('<section class="%s">%s</section>' % (cls, html))
+        if num:
+            attrs = 'class="sec sec-%d" id="s%d"' % (num, num)
+        else:
+            attrs = 'class="sec"'
+        parts.append("<section %s>%s</section>" % (attrs, html))
         headings.extend(hs)
 
     return {
