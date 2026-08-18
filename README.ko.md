@@ -106,6 +106,7 @@ prd-maker/
 │   └── scripts/
 │       └── validate_prd.py        # (4단계) 구조 린터 (결정론적, 언어 무관)
 ├── commands/prd-maker.md          # /prd-maker 슬래시 커맨드 (Claude Code)
+├── commands/prd-to-html.md        # /prd-to-html 슬래시 커맨드 (Claude Code)
 ├── .claude-plugin/                # Claude Code 플러그인 + 셀프 마켓플레이스
 ├── .codex-plugin/                 # Codex 플러그인 매니페스트
 └── .agents/plugins/               # Codex 마켓플레이스
@@ -182,6 +183,16 @@ LLM의 셀프리뷰는 유용하지만, "7개 섹션이 다 있는가", "non-goa
 ```bash
 python3 skills/prd-maker/scripts/validate_prd.py PRD.md
 ```
+
+### PRD를 사람이 읽기
+
+`PRD.md`는 코딩 에이전트를 위해 쓰여 있습니다. 직접 읽거나 이해관계자에게 전달하려면
+단일 HTML 파일로 변환하세요:
+
+    python3 skills/prd-maker/scripts/prd_to_html.py PRD.md
+
+이 HTML은 파생 뷰(derived view)입니다 — 마크다운에 없는 사실을 절대 추가하지 않으며,
+언제든 다시 생성하거나 지워도 됩니다. HTML이 아니라 `PRD.md`를 수정하세요.
 
 ## 설치
 

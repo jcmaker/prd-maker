@@ -106,6 +106,7 @@ prd-maker/
 │   └── scripts/
 │       └── validate_prd.py        # (step 4) structure linter (deterministic, language-agnostic)
 ├── commands/prd-maker.md          # /prd-maker slash command (Claude Code)
+├── commands/prd-to-html.md        # /prd-to-html slash command (Claude Code)
 ├── .claude-plugin/                # Claude Code plugin + self-marketplace
 ├── .codex-plugin/                 # Codex plugin manifest
 └── .agents/plugins/               # Codex marketplace
@@ -180,6 +181,16 @@ The linter runs standalone too:
 ```bash
 python3 skills/prd-maker/scripts/validate_prd.py PRD.md
 ```
+
+### Reading the PRD as a human
+
+`PRD.md` is written for coding agents. To read it yourself — or to hand it to a
+stakeholder — convert it to a single self-contained HTML file:
+
+    python3 skills/prd-maker/scripts/prd_to_html.py PRD.md
+
+The HTML is a derived view: it never adds a fact that is not in the markdown, and
+it can be regenerated or deleted at any time. Edit `PRD.md`, not the HTML.
 
 ## Install
 

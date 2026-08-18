@@ -24,6 +24,8 @@ jobs:
           python-version: "3.12"
       - name: Run validate_prd.py test suite
         run: python3 skills/prd-maker/scripts/test_validate_prd.py
+      - name: Run prd_to_html.py test suite
+        run: python3 skills/prd-maker/scripts/test_prd_to_html.py
       - name: Example PRDs must pass the linter
         shell: bash
         run: |
