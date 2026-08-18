@@ -34,6 +34,7 @@ The most important document when you build something is the one at the very star
 - [The adaptive interview](#the-adaptive-interview)
 - [The PRD it produces](#the-prd-it-produces)
 - [The structure linter](#the-structure-linter)
+- [Reading the PRD as a human](#reading-the-prd-as-a-human)
 - [Install](#install)
 - [Usage](#usage)
 - [Using it in other agents (Codex · Cursor)](#using-it-in-other-agents-codex--cursor)
@@ -104,8 +105,11 @@ prd-maker/
 │   │   ├── prd-template.md        # (step 3) 7-section structure + rules + skeleton
 │   │   └── quality-rules.md       # (step 4) pre-delivery semantic self-review
 │   └── scripts/
-│       └── validate_prd.py        # (step 4) structure linter (deterministic, language-agnostic)
+│       ├── validate_prd.py        # (step 4) structure linter (deterministic, language-agnostic)
+│       ├── prd_to_html.py         # PRD.md → single self-contained HTML view
+│       └── test_prd_to_html.py    # unit tests for the converter
 ├── commands/prd-maker.md          # /prd-maker slash command (Claude Code)
+├── commands/prd-to-html.md        # /prd-to-html slash command (Claude Code)
 ├── .claude-plugin/                # Claude Code plugin + self-marketplace
 ├── .codex-plugin/                 # Codex plugin manifest
 └── .agents/plugins/               # Codex marketplace
@@ -181,6 +185,31 @@ The linter runs standalone too:
 python3 skills/prd-maker/scripts/validate_prd.py PRD.md
 ```
 
+## Reading the PRD as a human
+
+`PRD.md` is written for coding agents, but the person who owns the project has to understand it too — what is being built, what is deliberately not, and which `(assumption)` items they need to confirm. A flat markdown file is a poor way to answer those questions.
+
+`/prd-to-html` converts it into a single self-contained HTML document:
+
+```
+/prd-to-html
+```
+
+Or standalone, on any markdown file:
+
+```bash
+python3 skills/prd-maker/scripts/prd_to_html.py PRD.md
+```
+
+The output re-orders the same facts for a human reader: a summary dashboard at the top, an assumption panel listing every unconfirmed item with its source line, non-goals as a highlighted block, phase cards, and a requirement index with stable anchors (`#p2-r4`) you can link to from a chat or an issue. It carries no external resources, so it works offline, over email, and behind a corporate network, and it prints to PDF cleanly.
+
+Two rules govern it:
+
+- **It is a derived view.** The converter is a deterministic script, not an LLM, so it cannot introduce a schedule, a cost, a metric, or a diagram that is not in your markdown.
+- **The markdown stays the source of truth.** The HTML holds no state and can be regenerated or deleted at any time. Edit `PRD.md`, never the HTML.
+
+Documents that don't follow the PRD structure still convert — each part of the dashboard appears only when its data exists, so an arbitrary markdown file degrades into a plain readable page rather than failing.
+
 ## Install
 
 ### Claude Code
@@ -235,6 +264,14 @@ build this PRD
 ```
 
 The agent starts implementing in phase order without re-asking. If any `(assumption)` items remain, it verifies just those first.
+
+To read the result yourself, or to send it to someone who does not live in a terminal:
+
+```
+/prd-to-html
+```
+
+That writes `PRD.html` next to the markdown. See [Reading the PRD as a human](#reading-the-prd-as-a-human).
 
 ## Using it in other agents (Codex · Cursor)
 

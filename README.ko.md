@@ -34,6 +34,7 @@
 - [적응형 인터뷰](#적응형-인터뷰)
 - [만들어지는 PRD의 구조](#만들어지는-prd의-구조)
 - [구조 린터](#구조-린터)
+- [PRD를 사람이 읽기](#prd를-사람이-읽기)
 - [설치](#설치)
 - [사용법](#사용법)
 - [다른 에이전트에서 쓰기 (Codex · Cursor)](#다른-에이전트에서-쓰기-codex--cursor)
@@ -104,8 +105,11 @@ prd-maker/
 │   │   ├── prd-template.md        # (3단계) 7섹션 구조 + 작성 규칙 + 스켈레톤
 │   │   └── quality-rules.md       # (4단계) 산출 직전 의미 셀프리뷰
 │   └── scripts/
-│       └── validate_prd.py        # (4단계) 구조 린터 (결정론적, 언어 무관)
+│       ├── validate_prd.py        # (4단계) 구조 린터 (결정론적, 언어 무관)
+│       ├── prd_to_html.py         # PRD.md → 단일 self-contained HTML 뷰
+│       └── test_prd_to_html.py    # 변환기 유닛 테스트
 ├── commands/prd-maker.md          # /prd-maker 슬래시 커맨드 (Claude Code)
+├── commands/prd-to-html.md        # /prd-to-html 슬래시 커맨드 (Claude Code)
 ├── .claude-plugin/                # Claude Code 플러그인 + 셀프 마켓플레이스
 ├── .codex-plugin/                 # Codex 플러그인 매니페스트
 └── .agents/plugins/               # Codex 마켓플레이스
@@ -183,6 +187,31 @@ LLM의 셀프리뷰는 유용하지만, "7개 섹션이 다 있는가", "non-goa
 python3 skills/prd-maker/scripts/validate_prd.py PRD.md
 ```
 
+## PRD를 사람이 읽기
+
+`PRD.md`는 코딩 에이전트를 위해 쓰여 있습니다. 하지만 프로젝트 오너도 같은 문서를 이해해야 합니다 — 무엇을 만드는지, 무엇을 일부러 안 만드는지, 어떤 `(가정)` 항목을 자기가 확인해줘야 하는지. 평평한 마크다운은 이 질문들에 답하기에 나쁜 형식입니다.
+
+`/prd-to-html`이 이 문서를 단일 self-contained HTML로 변환합니다:
+
+```
+/prd-to-html
+```
+
+임의의 마크다운 파일에 직접 쓸 수도 있습니다:
+
+```bash
+python3 skills/prd-maker/scripts/prd_to_html.py PRD.md
+```
+
+같은 사실을 사람이 읽는 순서로 재배치합니다 — 상단 요약 대시보드, 확인되지 않은 항목을 원문 줄 번호와 함께 모아놓은 가정 검토 패널, 강조 블록으로 올린 Non-Goals, 페이즈 카드, 그리고 채팅이나 이슈에서 바로 링크할 수 있는 고정 앵커(`#p2-r4`)가 붙은 요구사항 인덱스. 외부 리소스를 하나도 참조하지 않아서 오프라인·이메일·사내망에서 그대로 열리고, PDF로 인쇄해도 깨지지 않습니다.
+
+두 가지 원칙이 이 도구를 지배합니다:
+
+- **파생 뷰(derived view)입니다.** 변환기는 LLM이 아니라 결정적 스크립트이므로, 마크다운에 없는 일정·비용·지표·다이어그램을 만들어낼 수 없습니다.
+- **마크다운이 source of truth로 남습니다.** HTML은 상태를 저장하지 않고 언제든 다시 만들거나 지워도 됩니다. HTML이 아니라 `PRD.md`를 수정하세요.
+
+PRD 구조를 따르지 않는 문서도 변환됩니다. 대시보드의 각 요소는 해당 데이터가 있을 때만 나타나므로, 임의의 마크다운은 실패하는 대신 읽기 좋은 일반 페이지로 자연스럽게 격하됩니다.
+
 ## 설치
 
 ### Claude Code
@@ -237,6 +266,14 @@ claude plugin install prd-maker@prd-maker
 ```
 
 에이전트는 PRD의 페이즈 순서대로, 되묻지 않고 구현을 시작합니다. `(가정)` 항목이 남아 있으면 그것만 먼저 확인합니다.
+
+결과를 직접 읽거나, 터미널을 쓰지 않는 사람에게 전달하려면:
+
+```
+/prd-to-html
+```
+
+마크다운 옆에 `PRD.html`이 생깁니다. [PRD를 사람이 읽기](#prd를-사람이-읽기) 참고.
 
 ## 다른 에이전트에서 쓰기 (Codex · Cursor)
 

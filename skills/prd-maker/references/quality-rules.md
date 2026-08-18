@@ -19,3 +19,7 @@ After saving `PRD.md`, the message to the user MUST:
 2. Remind the user the PRD is a living document: "구현 중 결정이 바뀌면 이 문서를 갱신하세요."
 3. Suggest the natural next step: hand `PRD.md` to an AI coding agent (a fresh Claude Code, Codex, or Cursor session) with "이 PRD대로 구현해줘".
 4. If the user then confirms or corrects any `(가정)` item, update `PRD.md` accordingly and remove the confirmed marks — otherwise the implementing agent will re-verify them with the user before starting.
+5. Offer the human-readable HTML view — the PRD is written for coding agents, but the
+   project owner has to understand it too. Ask whether to generate it; only run
+   `python3 <this-skill-dir>/scripts/prd_to_html.py PRD.md` if the user agrees. The
+   HTML is a derived view, never a second source of truth.

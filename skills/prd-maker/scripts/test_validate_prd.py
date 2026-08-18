@@ -371,6 +371,30 @@ class TestAssumptions(unittest.TestCase):
         self.assertEqual(code, 0, msg=out)
         self.assertIn("ASSUMPTIONS (0):", out)
 
+    def test_backticked_marker_is_a_mention_not_an_assumption(self):
+        """The mandated PRD header names the marker in backticks.
+
+        Counting that line made every generated PRD report one phantom
+        assumption. A bare marker on the same line must still count.
+        """
+        text = make_valid_prd().replace(
+            "> **AI 에이전트에게:** 이 문서는 구현 지침입니다. 불명확한 부분은 추측하지 마세요.",
+            "> **AI 에이전트에게:** `(가정)` 표시는 사용자가 확인하지 않은 항목입니다.",
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        self.assertIn("ASSUMPTIONS (2):", out)  # the two bare markers only
+        self.assertNotIn("에이전트에게", out.split("ASSUMPTIONS", 1)[1])
+
+    def test_bare_marker_outside_backticks_on_the_same_line_still_counts(self):
+        text = make_valid_prd().replace(
+            "- 로컬 저장 — 혼자 쓰는 도구이므로 (가정)",
+            "- 로컬 저장 — `(가정)` 규칙에 따라 표시함 (가정)",
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        self.assertIn("ASSUMPTIONS (2):", out)
+
 
 class TestCliUsage(unittest.TestCase):
     def test_no_argument_exits_2(self):
