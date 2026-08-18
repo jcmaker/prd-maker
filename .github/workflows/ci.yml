@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Run validate_prd.py test suite
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Check SKILL.md constraints and reference integrity
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       # Deterministic gate: manifests parse and carry the required fields.
@@ -69,7 +69,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
       - name: claude plugin validate
         run: |
           npm install -g @anthropic-ai/claude-code
@@ -80,4 +80,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/ruff-action@v3
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      # Plain pip instead of ruff-action: one less third-party action, and the
+      # action still targets Node 20. Rules live in ruff.toml either way.
+      - name: Run ruff
+        run: |
+          pip install ruff
+          ruff check .
