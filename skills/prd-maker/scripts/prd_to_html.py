@@ -20,8 +20,10 @@ from validate_prd import (
     CHECKBOX_RE,
     NON_GOAL_ITEM_RE,
     NUMBERED_ITEM_RE,
+    find_assumptions,
     find_phase_blocks,
     find_section_body,
+    strip_fenced_blocks,
 )
 
 # Windows consoles often default to cp1252, which can't encode Korean text.
@@ -325,3 +327,312 @@ def split_sections(raw_lines):
         else:
             chunks[-1]["lines"].append(line)
     return [c for c in chunks if any(x.strip() for x in c["lines"])]
+
+
+def parse_document(text, fallback_title):
+    raw = text.splitlines()
+    stripped = strip_fenced_blocks(raw)
+    phases = collect_phases(stripped)
+
+    used_slugs = set()
+    headings, parts = [], []
+    for chunk in split_sections(raw):
+        num = chunk["num"]
+        if num == 6 and phases:
+            html, hs = render_phase_section(chunk["lines"], phases, used_slugs)
+        else:
+            html, hs = render_blocks(chunk["lines"], used_slugs)
+        if num:
+            attrs = 'class="sec sec-%d" id="s%d"' % (num, num)
+        else:
+            attrs = 'class="sec"'
+        parts.append("<section %s>%s</section>" % (attrs, html))
+        headings.extend(hs)
+
+    return {
+        # Title extraction is structure parsing, so it reads the fence-stripped
+        # lines: a `# ` inside a fenced example must not become the document title.
+        "title": extract_title(stripped, fallback_title),
+        "lang": detect_lang(text),
+        "headings": headings,
+        "assumptions": find_assumptions(stripped),
+        "non_goals": collect_non_goals(stripped),
+        "phases": phases,
+        "sections_html": "\n".join(parts),
+    }
+
+
+def render_phase_section(chunk_lines, phases, used_slugs):
+    """Render section 6 as phase cards so requirements get stable anchors."""
+    heading = chunk_lines[0].strip() if chunk_lines else "## 6."
+    head_html, headings = render_blocks([heading], used_slugs)
+    out = [head_html, '<ol class="tl">']
+    for ph in phases:
+        used_slugs.add(ph["anchor"])
+        headings.append((3, ph["title"], ph["anchor"]))
+        out.append('<li class="phase"><h3 id="%s">%s</h3>' % (ph["anchor"], escape(ph["title"])))
+        for note in ph["notes"]:
+            out.append("<p>" + render_inline(note) + "</p>")
+        if ph["requirements"]:
+            out.append("<ol>")
+            for r in ph["requirements"]:
+                out.append(
+                    '<li id="%s"><span class="rid">%s</span> %s</li>'
+                    % (r["anchor"], r["id"], render_inline(r["text"]))
+                )
+            out.append("</ol>")
+        if ph["criteria"]:
+            out.append('<ul class="crit">')
+            for c in ph["criteria"]:
+                out.append(
+                    '<li id="%s" class="%s"><span class="mark">%s</span>'
+                    '<span class="rid">%s</span> %s</li>'
+                    % (
+                        c["anchor"],
+                        "done" if c["checked"] else "todo",
+                        "☑" if c["checked"] else "☐",
+                        c["id"],
+                        render_inline(c["text"]),
+                    )
+                )
+            out.append("</ul>")
+        out.append("</li>")
+    out.append("</ol>")
+    return "\n".join(out), headings
+
+
+# --------------------------------------------------------------------------
+# Region 4 of 4: HTML template assembly
+# --------------------------------------------------------------------------
+
+STYLE = """
+:root{--bg:#fff;--surface:#f7f8fa;--text:#1a1d21;--muted:#5f6670;--border:#e2e6ea;
+--accent:#1d4ed8;--warn-bd:#c2870a;--warn-bg:#fdf6e3;--stop-bd:#b4453c;
+--stop-bg:#fdf0ef;--code-bg:#f2f4f7}
+:root[data-theme="dark"]{--bg:#14171a;--surface:#1b1f24;--text:#e6e8ea;--muted:#9aa3ad;
+--border:#2b3138;--accent:#7ea6ff;--warn-bd:#c99a2e;--warn-bg:#26210f;
+--stop-bd:#cc6b62;--stop-bg:#2a1715;--code-bg:#1f242a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+--bg:#14171a;--surface:#1b1f24;--text:#e6e8ea;--muted:#9aa3ad;--border:#2b3138;
+--accent:#7ea6ff;--warn-bd:#c99a2e;--warn-bg:#26210f;--stop-bd:#cc6b62;
+--stop-bg:#2a1715;--code-bg:#1f242a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-size:17px;line-height:1.7;
+word-break:keep-all;overflow-wrap:anywhere;
+font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.skip{position:absolute;left:-9999px}
+.skip:focus{left:8px;top:8px;background:var(--accent);color:#fff;padding:8px 12px;z-index:9}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+main{max-width:64ch}
+h1{font-size:1.9rem;line-height:1.35;margin:0 0 6px}
+h2{font-size:1.28rem;margin:2.4em 0 .6em;scroll-margin-top:16px}
+h3{font-size:1.05rem;margin:1.6em 0 .4em;scroll-margin-top:16px}
+a{color:var(--accent)}
+code{background:var(--code-bg);padding:.1em .35em;border-radius:4px;font-size:.88em}
+header.doc{border-bottom:1px solid var(--border);padding:28px 0 18px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:.83rem;margin-top:10px}
+.toggle{background:var(--surface);color:var(--text);border:1px solid var(--border);
+border-radius:999px;padding:5px 13px;font-size:.8rem;cursor:pointer;font-family:inherit}
+.dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin:22px 0 8px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+padding:12px 14px;text-decoration:none;color:inherit;display:block;break-inside:avoid}
+.tile .n{font-size:1.55rem;font-weight:700;display:block;line-height:1.2}
+.tile .l{font-size:.76rem;color:var(--muted);display:block}
+.tile.warn{background:var(--warn-bg);border-color:var(--warn-bd)}
+.panel{border:1px solid var(--border);border-left-width:4px;border-radius:8px;
+padding:14px 18px;margin:18px 0;background:var(--surface);break-inside:avoid}
+.panel.assume{border-left-color:var(--warn-bd);background:var(--warn-bg)}
+.panel h2{margin:0 0 .3em;font-size:1rem}
+.sec-3 ol>li{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+padding:10px 14px;margin:.5em 0;break-inside:avoid}
+.sec-4 ul{border:1px solid var(--stop-bd);background:var(--stop-bg);
+border-radius:8px;padding:12px 18px 12px 34px;break-inside:avoid}
+table{border-collapse:collapse;width:100%;margin:1.1em 0;font-size:.92rem;break-inside:avoid}
+th,td{border:1px solid var(--border);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:var(--surface);font-weight:600}
+.scroll{overflow-x:auto}
+pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;
+padding:12px 14px;overflow-x:auto;font-size:.83rem;break-inside:avoid}
+blockquote{border-left:3px solid var(--accent);margin:1em 0;padding:.2em 0 .2em 14px;color:var(--muted)}
+.tl{list-style:none;padding:0;margin:1.2em 0;position:relative}
+.tl:before{content:"";position:absolute;left:11px;top:6px;bottom:6px;width:2px;background:var(--border)}
+.tl>li{position:relative;padding:0 0 16px 34px;break-inside:avoid}
+.tl>li:before{content:"";position:absolute;left:5px;top:14px;width:14px;height:14px;
+border-radius:50%;background:var(--bg);border:2px solid var(--accent)}
+.crit{list-style:none;padding-left:0}
+.crit .mark{margin-right:6px}
+.rid{font-size:.74rem;color:var(--muted);font-variant-numeric:tabular-nums;margin-right:6px}
+footer.doc{border-top:1px solid var(--border);margin-top:48px;padding:18px 0 40px;
+color:var(--muted);font-size:.83rem}
+nav.toc{display:none}
+details.mtoc{margin:16px 0;border:1px solid var(--border);border-radius:8px;
+padding:8px 14px;background:var(--surface)}
+@media (min-width:1024px){
+.layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:44px;align-items:start}
+nav.toc{display:block;position:sticky;top:20px;font-size:.85rem;max-height:92vh;overflow-y:auto}
+nav.toc ol{list-style:none;margin:0;padding:0}
+nav.toc a{display:block;padding:3px 0 3px 10px;border-left:2px solid var(--border);
+color:var(--muted);text-decoration:none}
+nav.toc a.active{color:var(--accent);border-left-color:var(--accent);font-weight:600}
+details.mtoc{display:none}}
+@media print{
+:root{--bg:#fff;--surface:#fff;--text:#000;--muted:#333;--border:#999;--accent:#000;
+--warn-bg:#fff;--stop-bg:#fff;--code-bg:#fff}
+nav.toc,.toggle,details.mtoc{display:none!important}
+body{font-size:11pt;line-height:1.5}
+.layout{display:block}
+main{max-width:none}
+a[href^="http"]:after{content:" (" attr(href) ")";font-size:.85em}
+h2,h3{page-break-after:avoid}
+.tile,.panel,table,pre,.tl>li{page-break-inside:avoid}
+@page{margin:18mm}}
+"""
+
+SCRIPT = """
+(function(){
+var r=document.documentElement,b=document.getElementById('themeToggle');
+if(b){b.addEventListener('click',function(){
+var c=r.getAttribute('data-theme');
+if(!c){c=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
+r.setAttribute('data-theme',c==='dark'?'light':'dark');});}
+var links={},as=document.querySelectorAll('nav.toc a');
+as.forEach(function(a){links[a.getAttribute('href').slice(1)]=a;});
+if(!as.length)return;
+var io=new IntersectionObserver(function(es){es.forEach(function(e){
+var a=links[e.target.id];if(!a)return;
+if(e.isIntersecting){as.forEach(function(x){x.classList.remove('active');});
+a.classList.add('active');}});},{rootMargin:'0px 0px -75% 0px'});
+document.querySelectorAll('main h2[id]').forEach(function(h){io.observe(h);});
+})();
+"""
+
+
+def _tile(anchor, number, label, warn=False):
+    return (
+        '<a class="tile%s" href="#%s"><span class="n">%d</span>'
+        '<span class="l">%s</span></a>'
+        % (" warn" if warn else "", anchor, number, escape(label))
+    )
+
+
+def render_document(doc, source_name, generated_at):
+    """Assemble the single self-contained HTML document."""
+    phases = doc["phases"]
+    reqs = [r for ph in phases for r in ph["requirements"]]
+    crits = [c for ph in phases for c in ph["criteria"]]
+    labels = LABELS[doc["lang"]]
+
+    toc_items = "".join(
+        '<li><a href="#%s">%s</a></li>' % (a, escape(t))
+        for lvl, t, a in doc["headings"]
+        if lvl == 2
+    )
+
+    tiles = []
+    if phases:
+        tiles.append(_tile(phases[0]["anchor"], len(phases), labels["phases"]))
+        tiles.append(_tile(phases[0]["anchor"], len(reqs), labels["requirements"]))
+        tiles.append(_tile(phases[0]["anchor"], len(crits), labels["criteria"]))
+    if doc["non_goals"]:
+        tiles.append(_tile("s4", len(doc["non_goals"]), labels["non_goals"]))
+    if doc["assumptions"]:
+        tiles.append(_tile("assumptions", len(doc["assumptions"]), labels["assumptions"], True))
+    dash = '<div class="dash">%s</div>' % "".join(tiles) if tiles else ""
+
+    panel = ""
+    if doc["assumptions"]:
+        items = "".join(
+            "<li>%s</li>" % render_inline(text) for _, text in doc["assumptions"]
+        )
+        panel = (
+            '<section class="panel assume" id="assumptions">'
+            '<h2>%s (%d)</h2><p>%s</p><ul>%s</ul></section>'
+            % (labels["assumptions"], len(doc["assumptions"]), labels["assume_hint"], items)
+        )
+
+    index = ""
+    if reqs:
+        rows = "".join(
+            '<tr><td><a href="#%s">%s</a></td><td>%s</td><td>%s</td></tr>'
+            % (r["anchor"], r["id"], escape(ph["title"]), render_inline(r["text"]))
+            for ph in phases
+            for r in ph["requirements"]
+        )
+        index = (
+            '<section class="panel" id="req-index"><h2>%s</h2>'
+            '<div class="scroll"><table><tr><th>ID</th><th>%s</th><th>%s</th></tr>'
+            "%s</table></div></section>"
+            % (labels["index"], labels["phase"], labels["requirement"], rows)
+        )
+
+    return TEMPLATE % {
+        "lang": doc["lang"],
+        "title": escape(doc["title"]),
+        "style": STYLE,
+        "script": SCRIPT,
+        "skip": escape(labels["skip"]),
+        "source": escape(source_name),
+        "generated": escape(generated_at),
+        "toc_label": escape(labels["toc"]),
+        "toc": toc_items,
+        "dash": dash,
+        "panel": panel,
+        "body": doc["sections_html"],
+        "index": index,
+        "footer": labels["footer"] % escape(source_name),
+    }
+
+
+LABELS = {
+    "ko": {
+        "phases": "페이즈", "requirements": "요구사항", "criteria": "수용 기준",
+        "non_goals": "Non-Goals", "assumptions": "가정",
+        "assume_hint": "아래 항목은 사용자가 확인하지 않은 내용입니다. 검토해 주세요.",
+        "index": "요구사항 인덱스", "phase": "페이즈", "requirement": "요구사항",
+        "toc": "목차", "skip": "본문으로 건너뛰기",
+        "footer": "이 문서는 <code>%s</code>에서 생성된 파생물입니다. 수정은 원본 마크다운에서 하세요.",
+    },
+    "en": {
+        "phases": "Phases", "requirements": "Requirements", "criteria": "Acceptance",
+        "non_goals": "Non-Goals", "assumptions": "Assumptions",
+        "assume_hint": "These items were not confirmed by the user. Please review them.",
+        "index": "Requirement index", "phase": "Phase", "requirement": "Requirement",
+        "toc": "Contents", "skip": "Skip to content",
+        "footer": "Generated from <code>%s</code>. Edit the source markdown, not this file.",
+    },
+}
+
+TEMPLATE = """<!doctype html>
+<html lang="%(lang)s">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%(title)s</title>
+<style>%(style)s</style>
+</head>
+<body>
+<a class="skip" href="#main">%(skip)s</a>
+<div class="wrap">
+<header class="doc">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+<div><h1>%(title)s</h1>
+<div class="meta"><span>%(source)s</span><span>%(generated)s</span></div></div>
+<button class="toggle" id="themeToggle" type="button">&#9689;</button>
+</div>
+%(dash)s
+</header>
+<details class="mtoc"><summary>%(toc_label)s</summary><ol>%(toc)s</ol></details>
+<div class="layout">
+<nav class="toc" aria-label="%(toc_label)s"><ol>%(toc)s</ol></nav>
+<main id="main">
+%(panel)s
+%(body)s
+%(index)s
+</main>
+</div>
+<footer class="doc">%(footer)s</footer>
+</div>
+<script>%(script)s</script>
+</body>
+</html>
+"""

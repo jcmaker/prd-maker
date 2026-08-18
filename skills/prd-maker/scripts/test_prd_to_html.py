@@ -192,5 +192,63 @@ class TestStructureParsing(unittest.TestCase):
         self.assertIn(6, nums)
 
 
+class TestDocumentAssembly(unittest.TestCase):
+    def build(self, text=SAMPLE_PRD):
+        doc = p.parse_document(text, "PRD")
+        return p.render_document(doc, "PRD.md", "2026-08-18 12:00")
+
+    def test_has_lang_attribute(self):
+        self.assertIn('<html lang="ko"', self.build())
+
+    def test_title_ignores_headings_inside_code_fences(self):
+        doc = p.parse_document("```\n# 예시 제목\n```\n\n# 진짜 제목\n", "PRD")
+        self.assertEqual(doc["title"], "진짜 제목")
+
+    def test_dashboard_has_one_tile_per_metric(self):
+        html = self.build()
+        self.assertIn('class="dash"', html)
+        # phases, requirements, criteria, non-goals, assumptions
+        self.assertEqual(html.count('class="tile'), 5)
+
+    def test_assumption_panel_lists_every_assumption(self):
+        doc = p.parse_document(SAMPLE_PRD, "PRD")
+        html = p.render_document(doc, "PRD.md", "t")
+        self.assertEqual(len(doc["assumptions"]), 1)
+        self.assertIn("assume", html)
+
+    def test_requirement_anchors_exist(self):
+        html = self.build()
+        self.assertIn('id="p1-r1"', html)
+        self.assertIn('id="p1-a1"', html)
+
+    def test_requirement_index_table_present(self):
+        self.assertIn("req-index", self.build())
+
+    def test_footer_states_derived_status(self):
+        self.assertIn("PRD.md", self.build())
+
+    def test_print_and_dark_css_present(self):
+        html = self.build()
+        self.assertIn("@media print", html)
+        self.assertIn("prefers-color-scheme", html)
+
+    def test_korean_typography_rules_present(self):
+        self.assertIn("keep-all", self.build())
+
+    def test_no_external_resources(self):
+        html = self.build()
+        self.assertNotIn("<script src=", html)
+        self.assertNotIn("<link href=", html)
+        self.assertNotIn("@import", html)
+
+    def test_partial_enhancement_drops_missing_pieces(self):
+        html = p.render_document(
+            p.parse_document("# 그냥 메모\n\n본문 한 줄.\n", "메모"), "memo.md", "t"
+        )
+        self.assertIn("그냥 메모", html)
+        self.assertNotIn("req-index", html)
+        self.assertNotIn('id="p1-r1"', html)
+
+
 if __name__ == "__main__":
     unittest.main()
