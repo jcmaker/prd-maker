@@ -261,6 +261,59 @@ class TestCheck4PhasesCheckboxes(unittest.TestCase):
         self.assertIn("FAIL", check4_line)
         self.assertIn("Phase 2", check4_line)
 
+class TestIndentedItems(unittest.TestCase):
+    def test_indented_non_goal_bullets_count(self):
+        text = make_valid_prd().replace(
+            "- 이번 버전에서 푸시 알림은 구현하지 않는다.\n",
+            "  - 이번 버전에서 푸시 알림은 구현하지 않는다.\n",
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check3_line = [l for l in out.splitlines() if "CHECK 3" in l][0]
+        self.assertIn("PASS", check3_line)
+
+    def test_indented_checkbox_recognized(self):
+        text = make_valid_prd().replace(
+            "- [x] 기준 1\n", "  - [x] 기준 1\n"
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check4_line = [l for l in out.splitlines() if "CHECK 4" in l][0]
+        self.assertIn("PASS", check4_line)
+
+    def test_indented_checkbox_with_space_prefix(self):
+        text = make_valid_prd().replace(
+            "- [ ] 기준 1\n", "   - [ ] 기준 1\n"
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check4_line = [l for l in out.splitlines() if "CHECK 4" in l][0]
+        self.assertIn("PASS", check4_line)
+
+    def test_indented_numbered_items_not_counted_for_check5(self):
+        """CHECK 5 counts top-level numbered items only (option a of issue #17).
+
+        26 top-level requirements + 25 indented sub-items = 51 numbered lines,
+        but only the 26 top-level ones are requirements, so the phase stays
+        under the cap of 50.
+        """
+        reqs = []
+        for i in range(1, 27):
+            reqs.append(f"{i}. 요구사항 {i}")
+            if i <= 25:
+                reqs.append(f"  {i}. 세부 {i}")
+        many_reqs = "\n".join(reqs)
+        text = make_valid_prd().replace(
+            "**요구사항:**\n1. 요구사항 1\n2. 요구사항 2\n**수용 기준:**\n- [ ] 기준 1",
+            f"**요구사항:**\n{many_reqs}\n**수용 기준:**\n- [ ] 기준 1",
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check5_line = [l for l in out.splitlines() if "CHECK 5" in l][0]
+        self.assertIn("PASS", check5_line)
+        self.assertNotIn("ADVISORY", out)
+
+
 class TestCheck5RequirementsCap(unittest.TestCase):
     def test_51_requirements_in_phase_fails(self):
         many_reqs = "\n".join(f"{i}. 요구사항 {i}" for i in range(1, 52))

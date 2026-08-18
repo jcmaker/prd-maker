@@ -29,9 +29,9 @@ if hasattr(sys.stderr, "reconfigure"):
 
 HEADING_RE = re.compile(r"^## ")
 NUMBERED_SECTION_RE = re.compile(r"^## ([1-7])\.")
-NON_GOAL_ITEM_RE = re.compile(r"^(?:- |\* )")
+NON_GOAL_ITEM_RE = re.compile(r"^\s*(?:- |\* )")
 PHASE_RE = re.compile(r"^### ")
-CHECKBOX_RE = re.compile(r"^- \[[ xX]\]")
+CHECKBOX_RE = re.compile(r"^\s*- \[[ xX]\]")
 NUMBERED_ITEM_RE = re.compile(r"^\d+\.")
 ASSUMPTION_RE = re.compile(r"\(가정\)|\(assumption\)", re.IGNORECASE)
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
