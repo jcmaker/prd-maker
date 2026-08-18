@@ -291,6 +291,10 @@ Q8. Let's confirm what to store per bookmark. (URL, title, description, favicon 
 
 If a non-developer describes the same idea, no stack question ever appears and the technical constraints get filled in automatically, each marked `(assumption)` with its rationale.
 
+### Full Example PRD Files
+- [Bookmark Manager SaaS PRD (Developer Track)](docs/examples/bookmark-saas.md)
+- [Habit Tracker Consumer App PRD (Non-Developer Track)](docs/examples/consumer-app.md)
+
 ## Design philosophy
 
 prd-maker was built on **"add only what's proven to help,"** not "cram in as many features as possible" — because prompt assets get worse as instructions pile up.
