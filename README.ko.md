@@ -104,7 +104,9 @@ prd-maker/
 │   │   ├── prd-template.md        # (3단계) 7섹션 구조 + 작성 규칙 + 스켈레톤
 │   │   └── quality-rules.md       # (4단계) 산출 직전 의미 셀프리뷰
 │   └── scripts/
-│       └── validate_prd.py        # (4단계) 구조 린터 (결정론적, 언어 무관)
+│       ├── validate_prd.py        # (4단계) 구조 린터 (결정론적, 언어 무관)
+│       ├── prd_to_html.py         # PRD.md → 단일 self-contained HTML 뷰
+│       └── test_prd_to_html.py    # 변환기 유닛 테스트
 ├── commands/prd-maker.md          # /prd-maker 슬래시 커맨드 (Claude Code)
 ├── commands/prd-to-html.md        # /prd-to-html 슬래시 커맨드 (Claude Code)
 ├── .claude-plugin/                # Claude Code 플러그인 + 셀프 마켓플레이스

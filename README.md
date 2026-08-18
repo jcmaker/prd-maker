@@ -104,7 +104,9 @@ prd-maker/
 │   │   ├── prd-template.md        # (step 3) 7-section structure + rules + skeleton
 │   │   └── quality-rules.md       # (step 4) pre-delivery semantic self-review
 │   └── scripts/
-│       └── validate_prd.py        # (step 4) structure linter (deterministic, language-agnostic)
+│       ├── validate_prd.py        # (step 4) structure linter (deterministic, language-agnostic)
+│       ├── prd_to_html.py         # PRD.md → single self-contained HTML view
+│       └── test_prd_to_html.py    # unit tests for the converter
 ├── commands/prd-maker.md          # /prd-maker slash command (Claude Code)
 ├── commands/prd-to-html.md        # /prd-to-html slash command (Claude Code)
 ├── .claude-plugin/                # Claude Code plugin + self-marketplace
