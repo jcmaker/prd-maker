@@ -704,6 +704,10 @@ class TestDocumentAssembly(unittest.TestCase):
     def test_has_lang_attribute(self):
         self.assertIn('<html lang="ko"', self.build())
 
+    def test_title_ignores_headings_inside_code_fences(self):
+        doc = p.parse_document("```\n# 예시 제목\n```\n\n# 진짜 제목\n", "PRD")
+        self.assertEqual(doc["title"], "진짜 제목")
+
     def test_dashboard_has_one_tile_per_metric(self):
         html = self.build()
         self.assertIn('class="dash"', html)
@@ -781,7 +785,9 @@ def parse_document(text, fallback_title):
         headings.extend(hs)
 
     return {
-        "title": extract_title(raw, fallback_title),
+        # Title extraction is structure parsing, so it reads the fence-stripped
+        # lines: a `# ` inside a fenced example must not become the document title.
+        "title": extract_title(stripped, fallback_title),
         "lang": detect_lang(text),
         "headings": headings,
         "assumptions": find_assumptions(stripped),
