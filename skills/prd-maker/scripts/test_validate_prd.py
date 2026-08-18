@@ -138,6 +138,52 @@ class TestFencedCodeBlocks(unittest.TestCase):
         self.assertIn("PASS", check2_line)
         self.assertIn("ASSUMPTIONS (2):", out)
 
+    def test_tilde_fenced_heading_and_assumption_are_ignored(self):
+        # A tilde-fenced markdown example containing `## 3.` must not trip CHECK 2,
+        # and a `(가정)` line inside the fence must not be listed.
+        fenced = (
+            "예시:\n"
+            "~~~markdown\n"
+            "## 3. 펜스 안 가짜 섹션\n"
+            "- 펜스 안 항목 (가정)\n"
+            "~~~\n"
+        )
+        text = make_valid_prd().replace(
+            "## 5. 기술 제약 & 기존 결정\n",
+            "## 5. 기술 제약 & 기존 결정\n" + fenced,
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check2_line = [l for l in out.splitlines() if "CHECK 2" in l][0]
+        self.assertIn("PASS", check2_line)
+        self.assertIn("ASSUMPTIONS (2):", out)
+
+    def test_mixed_delimiter_fenced_blocks(self):
+        # Nested opposite delimiter within fenced code block does not close early.
+        fenced = (
+            "예시 1:\n"
+            "```markdown\n"
+            "~~~markdown\n"
+            "## 3. 펜스 안 가짜 섹션\n"
+            "~~~\n"
+            "```\n"
+            "예시 2:\n"
+            "~~~markdown\n"
+            "```markdown\n"
+            "## 4. 펜스 안 가짜 섹션\n"
+            "```\n"
+            "~~~\n"
+        )
+        text = make_valid_prd().replace(
+            "## 5. 기술 제약 & 기존 결정\n",
+            "## 5. 기술 제약 & 기존 결정\n" + fenced,
+        )
+        code, out = run_validator(text)
+        self.assertEqual(code, 0, msg=out)
+        check2_line = [l for l in out.splitlines() if "CHECK 2" in l][0]
+        self.assertIn("PASS", check2_line)
+
+
 
 class TestCheck2Sections(unittest.TestCase):
     def test_out_of_order_only_fails(self):

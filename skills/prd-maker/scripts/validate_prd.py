@@ -3,7 +3,7 @@
 
 Checks are language-agnostic: they match markdown structure and numbers only,
 never heading words, because the generated PRD is written in the user's language.
-Fenced code blocks (``` ... ```) are stripped before all checks — including the
+Fenced code blocks (``` ... ``` or ~~~ ... ~~~) are stripped before all checks — including the
 ASSUMPTIONS listing — so markdown examples inside the PRD cannot cause false
 failures.
 
@@ -43,18 +43,27 @@ ADVISORY_REQUIREMENTS_THRESHOLD = 30
 
 
 def strip_fenced_blocks(lines):
-    """Blank out lines inside fenced code blocks (and the ``` fence lines
+    """Blank out lines inside fenced code blocks (and the ``` or ~~~ fence lines
     themselves), keeping list indices stable so reported line numbers stay
     correct.
     """
     stripped = []
-    in_fence = False
+    fence_char = None
     for line in lines:
-        if line.lstrip().startswith("```"):
-            in_fence = not in_fence
-            stripped.append("")
+        stripped_line = line.lstrip()
+        if fence_char is None:
+            if stripped_line.startswith("```"):
+                fence_char = "```"
+                stripped.append("")
+            elif stripped_line.startswith("~~~"):
+                fence_char = "~~~"
+                stripped.append("")
+            else:
+                stripped.append(line)
         else:
-            stripped.append("" if in_fence else line)
+            if stripped_line.startswith(fence_char):
+                fence_char = None
+            stripped.append("")
     return stripped
 
 
