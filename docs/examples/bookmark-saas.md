@@ -15,10 +15,11 @@ Current bookmark managers suffer from cluttered organizational hierarchies and l
 3. **Authentication & Data Sync** — User login via Supabase Auth with real-time PostgreSQL database persistence.
 
 ## 4. Non-Goals
-- AI-based automated content summarization is not implemented in this version.
+- AI-based auto-tagging suggestions are not implemented in this version.
 - Paid subscription billing and Stripe checkout are not implemented in this version.
 - Multi-user collaborative workspace sharing is not implemented in this version.
 - Browser extensions for Firefox or Safari are not supported in this version.
+- Folder/collection-based classification is not implemented in this version (tags cover it).
 
 ## 5. Technical Constraints & Prior Decisions
 - Framework: Next.js 14 App Router on Vercel [DO NOT CHANGE]
@@ -36,8 +37,9 @@ Current bookmark managers suffer from cluttered organizational hierarchies and l
 3. Implement POST /api/bookmarks endpoint with JWT token verification.
 **Acceptance criteria:**
 - [ ] User can authenticate in Chrome extension via Supabase OAuth.
+- [ ] After login, the save button is reachable within 2 clicks from the extension icon.
 - [ ] Clicking save creates a new record in the Supabase `bookmarks` table within 500ms.
-- [ ] Duplicate URLs prompt for update instead of creating duplicate records.
+- [ ] Re-saving the same URL updates the existing record instead of creating a duplicate.
 
 ### Phase 2: Web Management Dashboard
 **Goal:** Users can browse, search, and tag their saved bookmarks in a clean web UI.
