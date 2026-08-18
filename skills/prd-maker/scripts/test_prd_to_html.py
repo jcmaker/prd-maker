@@ -50,5 +50,57 @@ class TestRenderInline(unittest.TestCase):
         self.assertIn("&lt;script&gt;", out)
 
 
+class TestRenderBlocks(unittest.TestCase):
+    def render(self, md):
+        html, _ = p.render_blocks(md.splitlines())
+        return html
+
+    def test_headings_get_ids(self):
+        html, headings = p.render_blocks(["## 1. 개요"])
+        self.assertIn("<h2 id=", html)
+        self.assertEqual(len(headings), 1)
+        self.assertEqual(headings[0][0], 2)
+
+    def test_duplicate_headings_get_unique_ids(self):
+        _, headings = p.render_blocks(["## 개요", "", "## 개요"])
+        self.assertNotEqual(headings[0][2], headings[1][2])
+
+    def test_unordered_list(self):
+        html = self.render("- a\n- b")
+        self.assertIn("<ul>", html)
+        self.assertEqual(html.count("<li>"), 2)
+
+    def test_ordered_list(self):
+        html = self.render("1. first\n2. second")
+        self.assertIn("<ol>", html)
+
+    def test_checkbox_renders_marker_text_not_color_only(self):
+        html = self.render("- [ ] 미완료\n- [x] 완료")
+        self.assertIn("☐", html)
+        self.assertIn("☑", html)
+
+    def test_blockquote(self):
+        self.assertIn("<blockquote>", self.render("> 에이전트에게"))
+
+    def test_fenced_code_is_escaped(self):
+        html = self.render("```\n<script>x</script>\n```")
+        self.assertIn("<pre>", html)
+        self.assertIn("&lt;script&gt;", html)
+        self.assertNotIn("<script>", html)
+
+    def test_table(self):
+        html = self.render("| a | b |\n|---|---|\n| 1 | 2 |")
+        self.assertIn("<table>", html)
+        self.assertIn("<th>", html)
+        self.assertIn("<td>", html)
+
+    def test_paragraph(self):
+        self.assertIn("<p>", self.render("그냥 문장입니다."))
+
+    def test_unsupported_syntax_survives_as_text(self):
+        html = self.render("~~취소선~~")
+        self.assertIn("~~취소선~~", html)
+
+
 if __name__ == "__main__":
     unittest.main()
