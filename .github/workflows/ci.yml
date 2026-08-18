@@ -6,24 +6,44 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   linter-tests:
     name: PRD linter unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Run validate_prd.py test suite
         run: python3 skills/prd-maker/scripts/test_validate_prd.py
+      - name: Example PRDs must pass the linter
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(docs/examples/*.md)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "no docs/examples/*.md yet - skipped"
+            exit 0
+          fi
+          for f in "${files[@]}"; do
+            echo "--- $f"
+            python3 skills/prd-maker/scripts/validate_prd.py "$f"
+          done
 
   skill-structure:
     name: Skill structure integrity
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Check SKILL.md constraints and reference integrity
@@ -33,8 +53,8 @@ jobs:
     name: Plugin manifest validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       # Deterministic gate: manifests parse and carry the required fields.
@@ -45,10 +65,17 @@ jobs:
       # installed fresh in the runner; if a future CLI change breaks headless
       # invocation, the deterministic check above still gates the job.
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
       - name: claude plugin validate
         run: |
           npm install -g @anthropic-ai/claude-code
           claude plugin validate .
+
+  lint:
+    name: Python lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/ruff-action@v3
