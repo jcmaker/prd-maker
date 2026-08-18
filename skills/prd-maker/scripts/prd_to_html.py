@@ -15,6 +15,8 @@ Exit codes:
 
 import re
 import sys
+from datetime import datetime
+from pathlib import Path
 
 from validate_prd import (
     CHECKBOX_RE,
@@ -636,3 +638,51 @@ TEMPLATE = """<!doctype html>
 </body>
 </html>
 """
+
+
+# --------------------------------------------------------------------------
+# Region 4 of 4: CLI
+# --------------------------------------------------------------------------
+
+USAGE = "Usage: python3 prd_to_html.py <path-to-PRD.md> [--output <path.html>]"
+
+
+def main(argv):
+    args = argv[1:]
+    out_path = None
+    if "--output" in args:
+        k = args.index("--output")
+        if k + 1 >= len(args):
+            print(USAGE, file=sys.stderr)
+            return 2
+        out_path = Path(args[k + 1])
+        args = args[:k] + args[k + 2:]
+
+    if len(args) != 1:
+        print(USAGE, file=sys.stderr)
+        return 2
+
+    src = Path(args[0])
+    if not src.is_file():
+        print("Error: file not found: %s" % src, file=sys.stderr)
+        return 2
+    try:
+        text = src.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        print("Error: %s is not valid UTF-8 text." % src, file=sys.stderr)
+        return 2
+
+    if out_path is None:
+        out_path = src.with_suffix(".html")
+
+    doc = parse_document(text, src.stem)
+    generated = datetime.now().strftime("%Y-%m-%d %H:%M")
+    out_path.write_text(
+        render_document(doc, src.name, generated), encoding="utf-8"
+    )
+    print("Wrote %s (assumptions: %d)" % (out_path, len(doc["assumptions"])))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

@@ -4,7 +4,9 @@ Run with: cd skills/prd-maker/scripts && python3 test_prd_to_html.py
 """
 
 import pathlib
+import subprocess
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -255,6 +257,123 @@ class TestDocumentAssembly(unittest.TestCase):
         self.assertIn("그냥 메모", html)
         self.assertNotIn("req-index", html)
         self.assertNotIn('id="p1-r1"', html)
+
+
+SCRIPT_PATH = pathlib.Path(__file__).parent / "prd_to_html.py"
+EXAMPLES = pathlib.Path(__file__).resolve().parents[3] / "docs" / "examples"
+
+
+def run_cli(args):
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT_PATH)] + args,
+        capture_output=True, text=True, encoding="utf-8",
+    )
+    return result.returncode, result.stdout + result.stderr
+
+
+class TestCLI(unittest.TestCase):
+    def write_tmp(self, text, suffix=".md"):
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=suffix, delete=False, encoding="utf-8"
+        )
+        f.write(text)
+        f.close()
+        self.addCleanup(lambda: pathlib.Path(f.name).unlink(missing_ok=True))
+        return pathlib.Path(f.name)
+
+    def test_writes_sibling_html_file(self):
+        src = self.write_tmp(SAMPLE_PRD)
+        code, out = run_cli([str(src)])
+        self.assertEqual(code, 0, out)
+        target = src.with_suffix(".html")
+        self.addCleanup(lambda: target.unlink(missing_ok=True))
+        self.assertTrue(target.is_file())
+
+    def test_output_flag(self):
+        src = self.write_tmp(SAMPLE_PRD)
+        dest = pathlib.Path(tempfile.gettempdir()) / "prd_to_html_out.html"
+        self.addCleanup(lambda: dest.unlink(missing_ok=True))
+        code, out = run_cli([str(src), "--output", str(dest)])
+        self.assertEqual(code, 0, out)
+        self.assertIn("러닝 크루", dest.read_text(encoding="utf-8"))
+
+    def test_missing_argument_exits_2(self):
+        code, out = run_cli([])
+        self.assertEqual(code, 2)
+        self.assertIn("Usage", out)
+
+    def test_missing_file_exits_2(self):
+        self.assertEqual(run_cli(["/no/such/PRD.md"])[0], 2)
+
+    def test_non_utf8_exits_2(self):
+        f = tempfile.NamedTemporaryFile(mode="wb", suffix=".md", delete=False)
+        f.write("# 제목\n".encode("euc-kr"))
+        f.close()
+        self.addCleanup(lambda: pathlib.Path(f.name).unlink(missing_ok=True))
+        code, out = run_cli([f.name])
+        self.assertEqual(code, 2)
+        self.assertIn("UTF-8", out)
+
+    def test_empty_file_still_produces_html(self):
+        src = self.write_tmp("")
+        target = src.with_suffix(".html")
+        self.addCleanup(lambda: target.unlink(missing_ok=True))
+        self.assertEqual(run_cli([str(src)])[0], 0)
+        self.assertIn("<html", target.read_text(encoding="utf-8"))
+
+
+class TestSpecAcceptance(unittest.TestCase):
+    """The six checks named in section 7 of the design spec."""
+
+    def convert(self, path):
+        text = pathlib.Path(path).read_text(encoding="utf-8")
+        doc = p.parse_document(text, pathlib.Path(path).stem)
+        return doc, p.render_document(doc, pathlib.Path(path).name, "t")
+
+    def test_1_examples_are_well_formed(self):
+        from html.parser import HTMLParser
+
+        files = sorted(EXAMPLES.glob("*.md"))
+        self.assertTrue(files, "docs/examples/*.md not found")
+        for f in files:
+            _, html = self.convert(f)
+            parser = HTMLParser()
+            parser.feed(html)
+            parser.close()
+
+    def test_2_self_contained(self):
+        for f in sorted(EXAMPLES.glob("*.md")):
+            _, html = self.convert(f)
+            self.assertNotIn("<script src=", html)
+            self.assertNotIn("<link href=", html)
+            self.assertNotIn("@import", html)
+            self.assertNotIn('src="http', html)
+
+    def test_3_assumption_count_matches_linter(self):
+        from validate_prd import find_assumptions, strip_fenced_blocks
+
+        for f in sorted(EXAMPLES.glob("*.md")):
+            text = f.read_text(encoding="utf-8")
+            expected = len(find_assumptions(strip_fenced_blocks(text.splitlines())))
+            doc, _ = self.convert(f)
+            self.assertEqual(len(doc["assumptions"]), expected, f.name)
+
+    def test_4_script_input_is_neutralized(self):
+        doc = p.parse_document("# T\n\n<script>alert(1)</script>\n", "T")
+        html = p.render_document(doc, "T.md", "t")
+        body = html.split("<main", 1)[1]
+        self.assertNotIn("<script>alert(1)</script>", body)
+
+    def test_5_arbitrary_markdown_converts(self):
+        doc = p.parse_document("# 회의록\n\n- 항목 하나\n- 항목 둘\n", "회의록")
+        html = p.render_document(doc, "notes.md", "t")
+        self.assertIn("회의록", html)
+        self.assertNotIn("req-index", html)
+
+    def test_6_print_and_dark_css(self):
+        _, html = self.convert(sorted(EXAMPLES.glob("*.md"))[0])
+        self.assertIn("@media print", html)
+        self.assertIn("prefers-color-scheme", html)
 
 
 if __name__ == "__main__":
