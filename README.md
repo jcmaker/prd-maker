@@ -337,3 +337,7 @@ v1 is deliberately small. Candidates to consider based on real usage feedback:
 ## License
 
 MIT — use it, change it, distribute it freely.
+
+
+## Documentation
+- [Add example PRDs under docs/examples/](docs/examples/<file>.md)
