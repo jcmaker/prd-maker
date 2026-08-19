@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/jcmaker/prd-maker/actions/workflows/ci.yml/badge.svg)](https://github.com/jcmaker/prd-maker/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-5ed6c4.svg?style=flat-square)](LICENSE)
-![Version](https://img.shields.io/badge/version-0.3.0-8b7cf6.svg?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.2.1-8b7cf6.svg?style=flat-square)
 ![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex-d97757.svg?style=flat-square)
 ![Output](https://img.shields.io/badge/output-pure%20markdown-24292f.svg?style=flat-square)
 ![No dependencies](https://img.shields.io/badge/deps-stdlib%20only-3d4488.svg?style=flat-square)
