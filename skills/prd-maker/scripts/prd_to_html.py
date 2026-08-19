@@ -673,7 +673,10 @@ def render_document(doc, source_name, generated_at):
 
     # Layer 1 of the spec wants a relative link back to the source markdown; the
     # HTML is written as its sibling by default, so the bare name resolves.
-    src_link = '<a href="%s">%s</a>' % (escape(source_name), escape(source_name))
+    if SAFE_HREF_RE.match(source_name):
+        src_link = '<a href="%s">%s</a>' % (escape(source_name), escape(source_name))
+    else:
+        src_link = escape(source_name)
 
     return TEMPLATE % {
         "lang": doc["lang"],

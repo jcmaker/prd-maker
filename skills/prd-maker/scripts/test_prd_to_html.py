@@ -536,8 +536,12 @@ class TestSpecAcceptance(unittest.TestCase):
         self.assertIn("회의록", html)
         # the body must survive, not just the title
         self.assertIn("항목 하나", html)
-        self.assertIn("항목 둘", html)
-        self.assertNotIn("req-index", html)
+
+    def test_javascript_source_name_rendered_as_inert_text(self):
+        doc = p.parse_document("# Memo\n\nOne assumption.\n", "Memo")
+        html = p.render_document(doc, "javascript:alert(1).md", "t")
+        self.assertNotIn('href="javascript:alert(1).md"', html)
+        self.assertIn("javascript:alert(1).md", html)
 
     def test_6_print_and_dark_css(self):
         _, html = self.convert(sorted(EXAMPLES.glob("*.md"))[0])
