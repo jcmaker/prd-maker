@@ -536,6 +536,8 @@ class TestSpecAcceptance(unittest.TestCase):
         self.assertIn("회의록", html)
         # the body must survive, not just the title
         self.assertIn("항목 하나", html)
+        self.assertIn("항목 둘", html)
+        self.assertNotIn("req-index", html)
 
     def test_javascript_source_name_rendered_as_inert_text(self):
         doc = p.parse_document("# Memo\n\nOne assumption.\n", "Memo")
