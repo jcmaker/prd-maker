@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/jcmaker/prd-maker/actions/workflows/ci.yml/badge.svg)](https://github.com/jcmaker/prd-maker/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-5ed6c4.svg?style=flat-square)](LICENSE)
-![Version](https://img.shields.io/badge/version-0.1.0-8b7cf6.svg?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.3.0-8b7cf6.svg?style=flat-square)
 ![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex-d97757.svg?style=flat-square)
 ![Output](https://img.shields.io/badge/output-pure%20markdown-24292f.svg?style=flat-square)
 ![No dependencies](https://img.shields.io/badge/deps-stdlib%20only-3d4488.svg?style=flat-square)
@@ -108,6 +108,8 @@ prd-maker/
 │       ├── validate_prd.py        # (step 4) structure linter (deterministic, language-agnostic)
 │       ├── prd_to_html.py         # PRD.md → single self-contained HTML view
 │       └── test_prd_to_html.py    # unit tests for the converter
+├── skills/prd-to-html/
+│   └── SKILL.md                  # thin entry point: runs the converter above
 ├── commands/prd-maker.md          # /prd-maker slash command (Claude Code)
 ├── commands/prd-to-html.md        # /prd-to-html slash command (Claude Code)
 ├── .claude-plugin/                # Claude Code plugin + self-marketplace
@@ -277,7 +279,9 @@ That writes `PRD.html` next to the markdown. See [Reading the PRD as a human](#r
 
 The skill content (`SKILL.md` + `references/` + `scripts/`) follows the tool-agnostic **open Agent Skills standard**, so the same interview and PRD generation work in agents beyond Claude Code.
 
-**Codex** — this repo is packaged as a Codex plugin (`.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json`). Codex discovers the skill under `skills/` when you open the repo; invoke it with `$prd-maker` or `/skills`, or just describe your idea and it activates. The output and linter are identical to Claude Code.
+Both skills ship this way — `prd-maker` writes the PRD, `prd-to-html` renders an existing one.
+
+**Codex** — this repo is packaged as a Codex plugin (`.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json`). Codex discovers everything under `skills/` when you open the repo; invoke them with `$prd-maker` / `$prd-to-html` or `/skills`, or just describe what you want and the right one activates. Output and linter are identical to Claude Code.
 
 **Cursor and others** — tools with native Agent Skills support (Gemini CLI, Copilot, …) pick it up when placed in their skills directory. For tools without it, use the skill directly:
 
@@ -285,6 +289,12 @@ The skill content (`SKILL.md` + `references/` + `scripts/`) follows the tool-agn
 2. Open your target project in Cursor.
 3. Give Cursor this prompt: **"Read `<path-to-this-repo>/skills/prd-maker/SKILL.md` and follow it to interview me, then produce `PRD.md` in this project."**
 4. Answer the interview questions. Cursor should write the same pure-markdown PRD and run the same structure linter (`scripts/validate_prd.py`, stdlib only); only the auto-trigger is missing.
+
+To render an existing PRD the same way, point it at the other skill: **"Read `<path-to-this-repo>/skills/prd-to-html/SKILL.md` and follow it on `PRD.md`."** Or skip the agent entirely — the converter is a plain script with no dependencies:
+
+```bash
+python3 <path-to-this-repo>/skills/prd-maker/scripts/prd_to_html.py PRD.md
+```
 
 > The `PRD.md` it produces is pure markdown from the start, so it drops into **any agent, 100% as-is**. Cross-agent support applies to the *producing* side too — the *consuming* side was universal from day one.
 

@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/jcmaker/prd-maker/actions/workflows/ci.yml/badge.svg)](https://github.com/jcmaker/prd-maker/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-5ed6c4.svg?style=flat-square)](LICENSE)
-![Version](https://img.shields.io/badge/version-0.1.0-8b7cf6.svg?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.3.0-8b7cf6.svg?style=flat-square)
 ![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex-d97757.svg?style=flat-square)
 ![Output](https://img.shields.io/badge/output-pure%20markdown-24292f.svg?style=flat-square)
 ![No dependencies](https://img.shields.io/badge/deps-stdlib%20only-3d4488.svg?style=flat-square)
@@ -108,6 +108,8 @@ prd-maker/
 │       ├── validate_prd.py        # (4단계) 구조 린터 (결정론적, 언어 무관)
 │       ├── prd_to_html.py         # PRD.md → 단일 self-contained HTML 뷰
 │       └── test_prd_to_html.py    # 변환기 유닛 테스트
+├── skills/prd-to-html/
+│   └── SKILL.md                  # 얇은 진입점: 위 변환기를 실행
 ├── commands/prd-maker.md          # /prd-maker 슬래시 커맨드 (Claude Code)
 ├── commands/prd-to-html.md        # /prd-to-html 슬래시 커맨드 (Claude Code)
 ├── .claude-plugin/                # Claude Code 플러그인 + 셀프 마켓플레이스
@@ -279,7 +281,9 @@ claude plugin install prd-maker@prd-maker
 
 스킬 콘텐츠(`SKILL.md` + `references/` + `scripts/`)는 특정 도구에 묶이지 않은 **오픈 Agent Skills 표준**을 따릅니다. 그래서 Claude Code 외의 에이전트에서도 같은 인터뷰·PRD 생성이 동작합니다.
 
-**Codex** — 이 저장소는 Codex 플러그인으로도 패키징되어 있습니다 (`.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json`). Codex는 저장소를 열면 `skills/` 아래의 스킬을 발견하며, `$prd-maker` 또는 `/skills`로 호출하거나 아이디어를 설명하면 자동으로 켜집니다. 산출물과 린터는 Claude Code에서와 동일합니다.
+두 스킬 모두 같은 방식으로 배포됩니다 — `prd-maker`는 PRD를 쓰고, `prd-to-html`은 이미 있는 PRD를 렌더링합니다.
+
+**Codex** — 이 저장소는 Codex 플러그인으로도 패키징되어 있습니다 (`.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json`). Codex는 저장소를 열면 `skills/` 아래의 스킬을 전부 발견하며, `$prd-maker` / `$prd-to-html` 또는 `/skills`로 호출하거나 원하는 바를 설명하면 맞는 쪽이 자동으로 켜집니다. 산출물과 린터는 Claude Code에서와 동일합니다.
 
 **Cursor · 그 외** — Agent Skills를 네이티브로 지원하는 도구(Gemini CLI, Copilot 등)는 스킬 디렉토리에 배치하면 되고, 그렇지 않은 도구에서는 스킬을 직접 지목해 쓰면 됩니다:
 
@@ -287,6 +291,12 @@ claude plugin install prd-maker@prd-maker
 2. Cursor에서 PRD를 만들 대상 프로젝트를 엽니다.
 3. Cursor에게 이렇게 요청합니다: **"`<이-저장소-경로>/skills/prd-maker/SKILL.md`를 읽고 그대로 따라 인터뷰한 뒤, 이 프로젝트에 `PRD.md`를 만들어줘."**
 4. 인터뷰 질문에 답하면 됩니다. Cursor는 같은 순수 마크다운 PRD를 쓰고 같은 구조 린터(`scripts/validate_prd.py`, 표준 라이브러리만 사용)를 실행해야 합니다. 자동 트리거만 없을 뿐입니다.
+
+이미 있는 PRD를 HTML로 만들려면 다른 스킬을 지목하면 됩니다: **"`<이-저장소-경로>/skills/prd-to-html/SKILL.md`를 읽고 `PRD.md`에 그대로 적용해줘."** 에이전트를 거치지 않아도 됩니다 — 변환기는 의존성 없는 평범한 스크립트입니다:
+
+```bash
+python3 <이-저장소-경로>/skills/prd-maker/scripts/prd_to_html.py PRD.md
+```
 
 > 산출되는 `PRD.md`는 애초에 순수 마크다운이라 **어느 에이전트에 넣든 100% 그대로** 쓸 수 있습니다. 크로스-에이전트는 "PRD를 만드는 쪽"에도 적용될 뿐, "PRD를 소비하는 쪽"은 처음부터 범용이었습니다.
 
